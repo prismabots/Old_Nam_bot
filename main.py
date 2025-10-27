@@ -1,5 +1,5 @@
-import discord , random , asyncio ,sqlite3 , json  , copy , importlib , os , requests ,pytz , math
-import color_form , createGragh
+import discord , random , asyncio ,sqlite3 , json  , copy , importlib , os , requests ,pytz , math, logging
+import color_form , createGragh 
 from discord.ext import commands ,tasks 
 from discord import Embed , app_commands 
 from discord.ui import Button , View , Modal    
@@ -14,6 +14,14 @@ import openai , re
 import time as TIMELIB
 
 #====================================================
+# Logging Setup
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(funcName)s - %(message)s')
+logger = logging.getLogger(__name__)
+#====================================================
+
+
+
+#====================================================
 
 perfix = "-"
 intentsy = discord.Intents.all()
@@ -24,6 +32,7 @@ intentsy = discord.Intents.all()
 #====================================================
 
 def cddb(fun ,db = None, cr = None):
+    logger.info("cddb called with fun=%s", fun)
     if fun == "co":
         # dbs = cddb(fun="co")
         # cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
@@ -69,6 +78,7 @@ def cddb(fun ,db = None, cr = None):
 
 
 def get_from_json():
+    logger.info("get_from_json called")
     with open("config.json" , "r") as config :
         config = json.load(config)
 
@@ -76,6 +86,7 @@ def get_from_json():
 
 
 def encode(table = None , num = 6):
+    logger.info("encode called with table=%s, num=%s", table, num)
     # slug = hashlib.sha256(str(num).encode()).hexdigest()[:6].upper()
     start = int(f"1{0:0{num}}")
     end = int(f"1{0:0{num+1}}") - 1
@@ -100,6 +111,7 @@ def encode(table = None , num = 6):
 
 
 def is_server(guild_id ):
+    logger.info("is_server called for guild_id=%s", guild_id.guild.id)
     guild_id = guild_id.guild.id
     dbs = cddb(fun="co")
     columeName = "servers" 
@@ -109,6 +121,7 @@ def is_server(guild_id ):
     return True
 
 def is_promo_server(guild_id ):
+    logger.info("is_promo_server called for guild_id=%s", guild_id.guild.id)
     guild_id = guild_id.guild.id
     dbs = cddb(fun="co")
     columeName =  "promo_servers"
@@ -118,6 +131,7 @@ def is_promo_server(guild_id ):
     return True
 
 def is_admin(interaction):
+    logger.info("is_admin check for user_id=%s", interaction.user.id)
     global mainconfig
     admin_id = interaction.user.id
     if admin_id in mainconfig["admins"] :
@@ -128,6 +142,7 @@ def is_admin(interaction):
 
 
 def getTime(timeStamp = None , stampTime = None , strTime = None):
+    logger.info("getTime called with timeStamp=%s, stampTime=%s, strTime=%s", timeStamp, stampTime, strTime)
     eastern_timezone = pytz.timezone("America/New_York")  
     utc_now = datetime.utcnow()
     eastern_now = pytz.utc.localize(utc_now).astimezone(eastern_timezone)
@@ -142,15 +157,19 @@ def getTime(timeStamp = None , stampTime = None , strTime = None):
         return eastern_time
     
     elif strTime != None :
-        if len(strTime) <= 5 : 
-            time = datetime.strptime(strTime, "%m/%d")
-            eastern_time = eastern_timezone.localize(datetime(day=time.day , month=time.month , year=utc_now.year))
-        else:
-            time = datetime.strptime(strTime, "%m/%d/%y")
+        try:
+            if len(strTime) <= 5 : 
+                time = datetime.strptime(strTime, "%m/%d")
+                eastern_time = eastern_timezone.localize(datetime(day=time.day , month=time.month , year=utc_now.year))
+            else:
+                time = datetime.strptime(strTime, "%m/%d/%y")
 
-            eastern_time = eastern_timezone.localize(datetime(day=time.day , month=time.month , year=time.year))
-        
-        return eastern_time
+                eastern_time = eastern_timezone.localize(datetime(day=time.day , month=time.month , year=time.year))
+            
+            return eastern_time
+        except ValueError:
+            logger.error("Invalid date format for strTime: %s", strTime)
+            return None
     else:
         return eastern_now
 
@@ -158,10 +177,12 @@ def getTime(timeStamp = None , stampTime = None , strTime = None):
 
 class MyBot(commands.Bot):
     def __init__(self):
+        logger.info("MyBot.__init__ called")
 
         super().__init__(command_prefix=perfix, intents=discord.Intents.all() , activity = discord.Game(name=''))
 
     async def setup_hook(self) -> None:
+      logger.info("MyBot.setup_hook called")
       self.add_view(FreeTrialView())
       
 
@@ -170,6 +191,7 @@ client = MyBot()
 
 
 def get_hex_color(input_text):
+    logger.info("get_hex_color called with input_text=%s", input_text)
     if input_text:
         try:
             return int(input_text, 16)
@@ -204,6 +226,7 @@ def get_hex_color(input_text):
     
         )
 async def promo_setup(interaction:discord.interactions , type:str , channel:discord.TextChannel , status :str , mention : str , namrood :discord.Role = None):
+    logger.info("promo_setup command executed by %s", interaction.user)
     if   is_admin(interaction) :
         dbs = cddb(fun="co")
         columeName = "promo_servers"
@@ -249,6 +272,7 @@ async def promo_setup(interaction:discord.interactions , type:str , channel:disc
     
         )
 async def setup(interaction:discord.interactions , type:str , channel:discord.TextChannel , status :str , mention : str , namrood :discord.Role = None):
+    logger.info("setup command executed by %s", interaction.user)
     if   is_admin(interaction) :
         dbs = cddb(fun="co")
         columeName = "servers" 
@@ -287,11 +311,15 @@ async def setup(interaction:discord.interactions , type:str , channel:discord.Te
     ]    
         )
 async def trade(interaction:discord.interactions , status:int , stock:str , strike:float , direetion:int ,openprice:float ,expiry:str ,opendate:str = None ,closeprice:float = None):
+    logger.info("trade command executed by %s", interaction.user)
     if opendate == None :
         opentime =  getTime(timeStamp=True)
     else:
         # try :
         date_object = getTime(strTime=opendate)
+        if not date_object:
+            await interaction.response.send_message(f"Invalid date format for `opendate`. Please use `MM/DD` or `MM/DD/YY`.", ephemeral=True)
+            return
         opentime = (date_object.timestamp())
         timenow =  getTime(timeStamp=True)
         if opentime > timenow :
@@ -332,6 +360,7 @@ async def trade(interaction:discord.interactions , status:int , stock:str , stri
         
         )
 async def utrade(interaction:discord.interactions , trade_id :int , closeprice:float =None , status:int = None,openprice:float = None , opendate:str = None):
+    logger.info("utrade command executed by %s", interaction.user)
     timenow =  getTime(timeStamp= True)
     
     dbs = cddb(fun="co")
@@ -356,6 +385,9 @@ async def utrade(interaction:discord.interactions , trade_id :int , closeprice:f
 
     if opendate != None :
         date_object = getTime(strTime=opendate)
+        if not date_object:
+            await interaction.response.send_message(f"Invalid date format for `opendate`. Please use `MM/DD` or `MM/DD/YY`.", ephemeral=True)
+            return
 
         opentime = (date_object.timestamp())
         # if opentime > timenow :
@@ -372,6 +404,7 @@ async def utrade(interaction:discord.interactions , trade_id :int , closeprice:f
 @app_commands.check(is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def dtrade(interaction:discord.interactions , trade_id :int ):
+    logger.info("dtrade command executed by %s", interaction.user)
     dbs = cddb(fun="co")
     dbs[1].execute("SELECT id FROM trades WHERE id = ?" , (trade_id,))
     check = dbs[1].fetchone()
@@ -385,6 +418,7 @@ async def dtrade(interaction:discord.interactions , trade_id :int ):
 
 
 def getBiggerLenght(values):
+    logger.info("getBiggerLenght called")
     biggerLenth = 0
     for value in values :
         if len(str(value)) > biggerLenth :
@@ -394,6 +428,7 @@ def getBiggerLenght(values):
 
 
 def getTodayTrades():
+    logger.info("getTodayTrades called")
     dbs = cddb(fun="co")
     daystart = getTime().replace(hour= 0 , minute= 0 , second= 0 , microsecond= 0)
 
@@ -404,6 +439,7 @@ def getTodayTrades():
     return trades , title
 
 def getThisMonthTrades(justTime = False):
+    logger.info("getThisMonthTrades called with justTime=%s", justTime)
     dbs = cddb(fun="co")
     last_1_month = getTime().replace(day=1,hour=0 , minute= 0 , second= 0 , microsecond= 0)
     dbs[1].execute("SELECT * FROM trades where open_date >= ? ORDER BY open_date" , (last_1_month.timestamp() , ))  
@@ -421,6 +457,7 @@ def getThisMonthTrades(justTime = False):
     return trades , title
 
 def getThisWeekTrades(justTime = False):
+    logger.info("getThisWeekTrades called with justTime=%s", justTime)
     dbs = cddb(fun="co")
     now = getTime().replace(hour=0 , minute= 0 , second= 0 , microsecond= 0)
     days_until_last_monday = now.weekday() 
@@ -439,16 +476,20 @@ def getThisWeekTrades(justTime = False):
     return trades , title
 
 def getCustomTimeTrades(start , end):
+    logger.info("getCustomTimeTrades called with start=%s, end=%s", start, end)
     dbs = cddb(fun="co")
     now = getTime()
 
     start_date_object = getTime(strTime=start)
+    if not start_date_object:
+        return None, "Invalid start date format. Use MM/DD or MM/DD/YY."
     # if start_date_object.timestamp() > now.timestamp() :
     #     start_date_object = start_date_object.replace(year=now.year -1)
 
 
     end_date_object = getTime(strTime=end)
-
+    if not end_date_object:
+        return None, "Invalid end date format. Use MM/DD or MM/DD/YY."
     # if end_date_object.timestamp() > now.timestamp() :
     #     end_date_object = end_date_object.replace(year=now.year -1)
 
@@ -465,9 +506,12 @@ def getCustomTimeTrades(start , end):
 
 
 def getDayStats(day , style = 0):
+    logger.info("getDayStats called with day=%s, style=%s", day, style)
     dbs = cddb(fun="co")
     now = getTime()
     start_date_object = getTime(strTime=day)
+    if not start_date_object:
+        return (day, 0) # Return 0 stats if date is invalid
     # if start_date_object.timestamp() > now.timestamp() :
     #     start_date_object = start_date_object.replace(year=now.year -1)
     end_date_object = start_date_object + timedelta(days=1) 
@@ -511,6 +555,7 @@ def getDayStats(day , style = 0):
     
     )
 async def trades(interaction:discord.interactions , howmany:int ,  publish:int = None , start:str = None, end:str = None):
+    logger.info("trades command executed by %s", interaction.user)
     dbs = cddb(fun="co")
     # timenow =  int(datetime.datetime.now(pytz.timezone('GMT-8')).timestamp())
 
@@ -535,6 +580,10 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
         if start != None and end != None :
            data = getCustomTimeTrades(start , end)
            trades = data[0]
+           if trades is None:
+               await interaction.response.send_message(data[1], ephemeral=True)
+               cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
+               return
            title = data[1]
         else:
             await interaction.response.send_message(f"start , end arg must have value" , ephemeral=True)
@@ -682,6 +731,7 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
 
     )
 async def graghTrades(interaction:discord.interactions ,span:int , publish:int =2 ,start:str = None , end:str = None):
+    logger.info("graghTrades command executed by %s", interaction.user)
     main = []
     if span == 2 :
         data = getThisMonthTrades(justTime=True)
@@ -750,6 +800,9 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
 
             title = f"Trades Summary (From {start} To {end})"
             startObj = getTime(strTime=start)
+            if not startObj:
+                await interaction.response.send_message(f"Invalid start date format. Use MM/DD or MM/DD/YY.", ephemeral=True)
+                return
             endObj = getTime(strTime=end)
             days = []
             for i in range((endObj - startObj).days + 2) :
@@ -791,7 +844,6 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
                 await publishMsg("Daytrade" , embed=embedd)
             if publish == 2 :
                 await interaction.channel.send(file=discord.File(file, f"gragh.png"))                
-        file.close()
         os.remove(f'gragh.png')
  
     else:
@@ -812,6 +864,7 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def trim(interaction:discord.interactions ,stock :str , percentage:int  , publish:str = None ,text:str  = ""):
+    logger.info("trim command executed by %s", interaction.user)
     embedd = discord.Embed(title=f"TRIM /TAKE PROFIT : 💰" , description=f"**TRADE : ** {stock}\n\nProfit percentage : **{percentage}%**\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x3AFF00)
     embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
@@ -830,6 +883,7 @@ async def trim(interaction:discord.interactions ,stock :str , percentage:int  , 
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def avg(interaction:discord.interactions  ,stock :str , contract:str  ,publish:str = None , text:str  = ""):
+    logger.info("avg command executed by %s", interaction.user)
     embedd = discord.Embed(title=f"AVERAGE TRADE : 🏥 " , description=f"**TRADE : ** {stock}\n\n**Contract to buy :** {contract}\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xF7FF00)
     embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
@@ -849,6 +903,7 @@ async def avg(interaction:discord.interactions  ,stock :str , contract:str  ,pub
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def lotto(interaction:discord.interactions , text:str , publish:str = None ):
+    logger.info("lotto command executed by %s", interaction.user)
     embedd = discord.Embed(title=f"LOTTO TRADE-RISKY" , description=f"**{text}**\n Size for what you can afford to lose - Mange your risk\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x9300FF)
     embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
 
@@ -861,6 +916,7 @@ async def lotto(interaction:discord.interactions , text:str , publish:str = None
 class SwitchMessages(View):
     def __init__ (self ,embeds ) :
         super().__init__(timeout=None)       
+        logger.info("SwitchMessages view initialized")
         self.embeds = embeds
         self.embedIndex = 0
     
@@ -893,6 +949,7 @@ class SwitchMessages(View):
 
 
     async def nextButton(self , interaction:discord.interactions):
+        logger.info("SwitchMessages.nextButton clicked by %s", interaction.user)
         try:
             self.last_button.disabled = False        
             if self.embedIndex + 1 == len(self.embeds) - 1 :
@@ -903,6 +960,7 @@ class SwitchMessages(View):
             print("Error in nextButton" , e)
 
     async def lastButton(self , interaction:discord.interactions):
+        logger.info("SwitchMessages.lastButton clicked by %s", interaction.user)
         try:
             self.next_button.disabled = False        
 
@@ -932,6 +990,7 @@ class SwitchMessages(View):
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def stats(interaction:discord.interactions , howmany:int , start:str = None , end:str = None , publish:str = None ):
+    logger.info("stats command executed by %s", interaction.user)
     dbs = cddb(fun="co")
     # timenow =  int(datetime.datetime.now(pytz.timezone('GMT-8')).timestamp())
 
@@ -956,6 +1015,10 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
         if start != None and end != None :
            data = getCustomTimeTrades(start , end)
            trades = data[0]
+           if trades is None:
+               await interaction.response.send_message(data[1], ephemeral=True)
+               cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
+               return
            title = data[1]
         else:
             await interaction.response.send_message(f"start , end arg must have value" , ephemeral=True)
@@ -1034,6 +1097,7 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
 
 
 async def get_bto_image(stock:str , text1:str , text2:str , publish:str = None):
+    logger.info("get_bto_image called with stock=%s", stock)
     image = createGragh.createBtoDesign(stock,text1 , text2)
     image.save(f"bto.jpg")
 
@@ -1055,7 +1119,6 @@ async def get_bto_image(stock:str , text1:str , text2:str , publish:str = None):
         embedd.set_footer(text="Namrood @ PrismaGroup LLC   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)        
         # await interaction.response.send_message(embed = embedd)                
-    file.close()
     if publish != None :
         await publishMsg(publish , embed=embedd)
         
@@ -1072,6 +1135,7 @@ async def get_bto_image(stock:str , text1:str , text2:str , publish:str = None):
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def bto(interaction:discord.interactions ,stock:str , text1:str , text2:str ,publish:str = None):
+    logger.info("bto command executed by %s", interaction.user)
 
     embedd = await get_bto_image(stock , text1 , text2 , publish)
     await interaction.response.send_message(embed = embedd)
@@ -1079,6 +1143,7 @@ async def bto(interaction:discord.interactions ,stock:str , text1:str , text2:st
 
 
 async def get_profit_image(text , percentage ,publish):
+    logger.info("get_profit_image called with text=%s, percentage=%s", text, percentage)
     image = createGragh.createProfitDesign(text , f"{percentage}%")
     image.save(f"profit.jpg")
 
@@ -1102,7 +1167,6 @@ async def get_profit_image(text , percentage ,publish):
         embedd = discord.Embed(title="" , description="\n[@Prismagroup LLC](https://www.prismagroup.online/)" , colour = 0x33fff3)
         embedd.set_footer(text="Namrood @ PrismaGroup LLC   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)        
-    file.close()
     os.remove(f'profit.jpg')
 
     if publish != None :
@@ -1119,6 +1183,7 @@ async def get_profit_image(text , percentage ,publish):
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def profit(interaction:discord.interactions , text:str , percentage:int ,publish:str = None):
+    logger.info("profit command executed by %s", interaction.user)
 
     embedd = await get_profit_image(text , percentage , publish )
     await interaction.response.send_message(embed = embedd)
@@ -1144,6 +1209,7 @@ async def profit(interaction:discord.interactions , text:str , percentage:int ,p
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def gamble(interaction:discord.interactions , text1:str ,text2:str , publish:str = None):
+    logger.info("gamble command executed by %s", interaction.user)
     image = createGragh.createGambleDesign(text1 , text2)
     image.save(f"gamble.jpg")
 
@@ -1168,7 +1234,6 @@ async def gamble(interaction:discord.interactions , text1:str ,text2:str , publi
         embedd.set_footer(text="Namrood @ PrismaGroup LLC   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)        
         await interaction.response.send_message(embed = embedd)                
-    file.close()
     if publish != None :
         await publishMsg(publish , embed=embedd)
     
@@ -1185,6 +1250,7 @@ async def gamble(interaction:discord.interactions , text1:str ,text2:str , publi
 
 
 async def publishMsg(channel_ , content = "" , embed = None , view = None , file = None , promo = False , embeds = None):
+        logger.info("publishMsg called for channel_=%s, promo=%s", channel_, promo)
         if not embeds :
             if embed :
                 embeds = [embed]
@@ -1233,12 +1299,11 @@ async def publishMsg(channel_ , content = "" , embed = None , view = None , file
                                     with open(f'{file}', 'rb') as image:
                                         message = await channel.send(content=f"{mention}\n{content}",file = discord.File(image, f"gamble.jpg"))
                                         await message.add_reaction(random_emoji)
-                                    image.close()
                                 
                             else:
-                                print(f"Channel {channel_} not found for server {server[0]}")
+                                logger.warning(f"Channel {channel_} not found for server {server[0]}")
                         else:
-                            print(f"Guild not found for server {server[0]}")
+                            logger.warning(f"Guild not found for server {server[0]}")
 
             except Exception as e:
                 print(f"Error(server {server}) {e}")
@@ -1258,6 +1323,7 @@ async def publishMsg(channel_ , content = "" , embed = None , view = None , file
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def upd(interaction:discord.interactions , text:str , publish:str = None , img:str = None ,img2:str = None , chatgpt:bool = False):
+    logger.info("upd command executed by %s", interaction.user)
     await interaction.response.defer()
     
     if chatgpt :
@@ -1294,6 +1360,7 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def stc(interaction:discord.interactions , text:str , img:str = None , publish:str = None ):
+    logger.info("stc command executed by %s", interaction.user)
     embedd = discord.Embed(title=f'Sell To Close' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xFF0000)
     embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     if img :
@@ -1314,6 +1381,7 @@ async def stc(interaction:discord.interactions , text:str , img:str = None , pub
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def idi(interaction:discord.interactions , text:str , img:str = None ,img2:str = None, publish:str = None , chatgpt:bool = False):
+    logger.info("idi command executed by %s", interaction.user)
     await interaction.response.defer()
     
     if chatgpt :
@@ -1341,6 +1409,7 @@ async def idi(interaction:discord.interactions , text:str , img:str = None ,img2
         await publishMsg(publish , embeds=embeds)
 
 async def promo_command(text , img , publish , link = "https://discord.gg/m9WAsJdFrn" , title = "SMALL CAP SHARES TRADE IDEA" , isChatGpt = False , sponsor = "" , color = "ff8b00"):
+    logger.info("promo_command called with title=%s", title)
     color = get_hex_color(color)
     if isChatGpt == True:
         newText = await ConvertText(text , 2)
@@ -1368,6 +1437,7 @@ async def promo_command(text , img , publish , link = "https://discord.gg/m9WAsJ
         app_commands.Choice(name="No", value="False")
     ])
 async def promo(interaction:discord.interactions , text:str ,title:str = "SMALL CAP SHARES TRADE IDEA" ,sponsor:str = "" , img:str = None , publish:str = None , link:str = "https://discord.gg/m9WAsJdFrn" , chatgpt:str = "False"):
+    logger.info("promo command executed by %s", interaction.user)
     await interaction.response.defer()
     embedd = await promo_command(text=text , title=title , sponsor=sponsor , img=img , publish=publish , link=link , isChatGpt= chatgpt == "True")
     await interaction.followup.send(embed = embedd)
@@ -1382,6 +1452,7 @@ async def promo(interaction:discord.interactions , text:str ,title:str = "SMALL 
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def BTO(interaction:discord.interactions , text:str , img:str = None , publish:str = None ):
+    logger.info("BTO command executed by %s", interaction.user)
     embedd = discord.Embed(title=f'Buy To Open' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x2AFF00)
     embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     if img :
@@ -1396,6 +1467,7 @@ async def BTO(interaction:discord.interactions , text:str , img:str = None , pub
 
 
 def GetPromoRow(raw):
+    logger.info("GetPromoRow called")
     try:
         keys = [
             "title", "sponsor", "text",
@@ -1428,6 +1500,7 @@ def GetPromoRow(raw):
 
 
 async def main(message) :
+    logger.info("main (on_message) handler started for message from %s in channel %s", message.author, message.channel.id)
     global mainconfig
     if message.channel.id == mainconfig['daytrade']  or message.channel.id == mainconfig['swing'] or message.channel.id == mainconfig['promo'] or message.author.id in mainconfig["admins"]:
         if message.channel.id == mainconfig['promo'] and message.author.id != client.user.id and (message.content != "" or message.content != None) :
@@ -1446,49 +1519,57 @@ async def main(message) :
                 await message.reply(f"Error: {PromoData}")
                 return
         else:
-            t = message.content.split("-" ,maxsplit=1)
-            if t[0].strip() == 'UPD' :
-                color = 0xFFE800
-                title = 'UPDATE'
-            elif t[0].strip() == 'BTO' :
-                color = 0x2AFF00
-                title = 'Buy To Open'
-            elif t[0].strip() == 'STC' :
-                color = 0xFF0000
-                title = 'Sell To Close'
-            elif t[0].strip() == 'IDI' :
-                color = 0xFFFFFF
-                title = 'Idea'
-            elif "promo" in t[0].strip() :
-                publish = None
-                if t[0].strip() == "promoS":
-                    publish = "Swing"
-                elif t[0].strip() == "promoD":
-                    publish = "Daytrade"
-                if t[1] :
-                    if "&&" in t[1] :
-                        text = t[1].split("&&")[0]
-                        img = t[1].split("&&")[1]
-                        if "@@" in img :
-                            link = img.split("@@")[1]
-                            img = img.split("@@")[0]
-
-                    else:
-                        text = t[1]
-                        img = None
-
-                    if "@@" in text :
-                        link = text.split("@@")[1]
-                        text = text.split("@@")[0]
-                        
-                    if not link :
-                        link = "https://shorturl.at/64mEE"
-
-                    embed = await promo_command(text , img , publish , link)
-                    await message.reply(embed = embed)
+            try:
+                t = message.content.split("-" ,maxsplit=1)
+                if len(t) < 2:
+                    logger.info("Message did not contain '-', ignoring.")
                     return
-            else:
-                return None
+
+                if t[0].strip() == 'UPD' :
+                    color = 0xFFE800
+                    title = 'UPDATE'
+                elif t[0].strip() == 'BTO' :
+                    color = 0x2AFF00
+                    title = 'Buy To Open'
+                elif t[0].strip() == 'STC' :
+                    color = 0xFF0000
+                    title = 'Sell To Close'
+                elif t[0].strip() == 'IDI' :
+                    color = 0xFFFFFF
+                    title = 'Idea'
+                elif "promo" in t[0].strip() :
+                    publish = None
+                    if t[0].strip() == "promoS":
+                        publish = "Swing"
+                    elif t[0].strip() == "promoD":
+                        publish = "Daytrade"
+                    if t[1] :
+                        if "&&" in t[1] :
+                            text = t[1].split("&&")[0]
+                            img = t[1].split("&&")[1]
+                            if "@@" in img :
+                                link = img.split("@@")[1]
+                                img = img.split("@@")[0]
+
+                        else:
+                            text = t[1]
+                            img = None
+
+                        if "@@" in text :
+                            link = text.split("@@")[1]
+                            text = text.split("@@")[0]
+                            
+                        if 'link' not in locals() or not link:
+                            link = "https://shorturl.at/64mEE"
+
+                        embed = await promo_command(text , img , publish , link)
+                        await message.reply(embed = embed)
+                        return
+                else:
+                    return
+            except (IndexError, Exception) as e:
+                logger.error("Error processing message in main: %s", e)
+                return
 
             if message.channel.id == mainconfig['daytrade'] :    
                 channel_ = 'Daytrade'
@@ -1536,6 +1617,7 @@ async def main(message) :
 # ========================================================================= last update
 # =================================================================== ChatGPT
 async def ConvertText(text , prmType = 1):
+    logger.info("ConvertText called")
     Prompet = getFromJson("prompet")
     content =  Prompet[f'{prmType}'].replace("{text}" , text)
     # return ConvertTextFromAi(content , Prompet[f'{prmType}'])
@@ -1543,6 +1625,7 @@ async def ConvertText(text , prmType = 1):
 
 
 async def ConvertTextFromAi(text , prompet , inputtext):
+    logger.info("ConvertTextFromAi called")
     messages = [
         {"role": "user", "content":  text}
     ]
@@ -1570,6 +1653,7 @@ async def ConvertTextFromAi(text , prompet , inputtext):
 @app_commands.check(is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def updatePrompet(interaction:discord.Integration  , newprompet:str):
+    logger.info("updatePrompet command executed by %s", interaction.user.id)
     Prompet = getFromJson("prompet")
     Prompet[str(1)] = newprompet.replace("\n" , "")
     updateJson(Prompet , "prompet")
@@ -1579,6 +1663,7 @@ async def updatePrompet(interaction:discord.Integration  , newprompet:str):
 @app_commands.check(is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def getPrompet(interaction:discord.Integration):
+    logger.info("getPrompet command executed by %s", interaction.user.id)
     Prompet = getFromJson("prompet")
     await interaction.response.send_message(f"{Prompet[str(1)]}")
 
@@ -1589,6 +1674,7 @@ async def getPrompet(interaction:discord.Integration):
 @app_commands.check(is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def updatepromo_prompt(interaction:discord.Integration  , newprompet:str):
+    logger.info("updatepromo_prompt command executed by %s", interaction.user.id)
     Prompet = getFromJson("prompet")
     Prompet[str(2)] = newprompet.replace("\n" , "")
     updateJson(Prompet , "prompet")
@@ -1598,6 +1684,7 @@ async def updatepromo_prompt(interaction:discord.Integration  , newprompet:str):
 @app_commands.check(is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def getpromo_prompt(interaction:discord.Integration):
+    logger.info("getpromo_prompt command executed by %s", interaction.user.id)
     Prompet = getFromJson("prompet")
     await interaction.response.send_message(f"{Prompet[str(2)]}")
 
@@ -1605,6 +1692,7 @@ async def getpromo_prompt(interaction:discord.Integration):
 
 
 def getFromJson(file = "config"):
+    logger.info("getFromJson called for file=%s", file)
     if file == "prompet":
         with open("prompet.json" , "r") as config :
             config = json.load(config)
@@ -1615,6 +1703,7 @@ def getFromJson(file = "config"):
     return config
 
 def updateJson(data = None , file = "config"):
+    logger.info("updateJson called for file=%s", file)
     if not data :
         data = mainconfig
     if file == "prompet":
@@ -1631,6 +1720,7 @@ error_embed = discord.Embed(
     color=discord.Color.red()
 )
 def format_time(seconds):
+    logger.info("format_time called with seconds=%s", seconds)
     if seconds < 60:
         return f"{seconds} seconds"
     elif seconds < 3600:
@@ -1645,6 +1735,7 @@ def format_time(seconds):
     
 
 async def has_any_role(user_id: int) -> bool:
+    logger.info("has_any_role check for user_id=%s", user_id)
     guild = client.get_guild(mainconfig["guildid"])  # Get the guild object
     if not guild:
         return False  # Guild not found
@@ -1660,6 +1751,7 @@ async def has_any_role(user_id: int) -> bool:
 
 # =================================================================== TempRole 
 def convert_to_seconds(time_str):
+    logger.info("convert_to_seconds called with time_str=%s", time_str)
     try:
         time_units = {
             's': 1,        # seconds
@@ -1681,6 +1773,7 @@ def convert_to_seconds(time_str):
         return
 
 async def addTempRole(user_id  ,  role_id , duration , bybassAddRole = False):
+    logger.info("addTempRole called for user_id=%s, role_id=%s, duration=%s", user_id, role_id, duration)
     # seconds = convert_to_seconds(duration)
     seconds = duration 
     guild = client.get_guild(mainconfig["guildid"])
@@ -1737,6 +1830,7 @@ async def addTempRole(user_id  ,  role_id , duration , bybassAddRole = False):
     return None,None
 
 async def RemoveAllRoles(userId):
+    logger.info("RemoveAllRoles called for userId=%s", userId)
     guild = client.get_guild(mainconfig["guildid"])
     if guild is None:
         return
@@ -1756,6 +1850,7 @@ async def RemoveAllRoles(userId):
 
 @client.tree.command(name="temp_role" , description="temp_role command")
 async def temp_role(interaction:discord.interactions, member: discord.Member, role: discord.Role , duration:int):
+    logger.info("temp_role command executed by %s", interaction.user)
     await interaction.response.defer()
     if await has_any_role(interaction.user.id) == True :
         response , embed = await addTempRole(member.id ,role.id , duration * 86400 )
@@ -1773,6 +1868,7 @@ async def temp_role(interaction:discord.interactions, member: discord.Member, ro
 
 
 async def remove_role( role_id: int, user_id: int):
+    logger.info("remove_role called for user_id=%s, role_id=%s", user_id, role_id)
 
     guild = client.get_guild(mainconfig["guildid"])
     if guild is None:
@@ -1802,6 +1898,7 @@ async def remove_role( role_id: int, user_id: int):
 
 
 async def UpdateTempRoleMessage(lines , RolesLines):
+    logger.info("UpdateTempRoleMessage called")
     channel = client.get_channel(mainconfig["temprole-channel"])
     descriptions = []
     currentLine = 1
@@ -1836,13 +1933,14 @@ async def UpdateTempRoleMessage(lines , RolesLines):
 
 @tasks.loop(seconds=60 * 10) 
 async def SendStats():
+    logger.info("SendStats task running")
     channel = client.get_channel(mainconfig["temprole-channel"])
     await channel.send("stats")
 
 @tasks.loop(seconds=60 * 10) 
 async def CheckExpiryRoles():
     global RolesLines , usersData
-    print("CheckExpiryRoles")
+    logger.info("CheckExpiryRoles task running")
     Session = GetSession()
     usersData = []
     RolesNums = {}
@@ -1886,10 +1984,12 @@ demo_embed.set_footer(text="prismagroup LLC @ Namrood   -  NOT A FINANCIAL ADVIC
 
 class FreeTrialView(discord.ui.View):
     def __init__(self):
+        logger.info("FreeTrialView initialized")
         super().__init__(timeout=None)  # No timeout so it persists
 
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="freetrial_button")
     async def freetrial_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logger.info("freetrial_callback clicked by %s", interaction.user)
         await interaction.response.defer()
         Session = GetSession()
         existing_user = Session.query(DataBase.FreeTrial).filter_by(userid = interaction.user.id).one_or_none()
@@ -1918,6 +2018,7 @@ class FreeTrialView(discord.ui.View):
         await interaction.followup.send(embed=embed , ephemeral=True)
 
 async def sendDemoView():
+    logger.info("sendDemoView called")
     channel = client.get_channel(mainconfig["freetrial-channel"])
     view = FreeTrialView()
     message = await channel.send(embed=demo_embed , view=view)
@@ -1927,6 +2028,7 @@ async def sendDemoView():
 
 @tasks.loop(seconds=600)
 async def CheckFreeTrialView():
+    logger.info("CheckFreeTrialView task running")
     if "freetrial-view" not in mainconfig or mainconfig["freetrial-view"] == 0 :
         await sendDemoView()
     else:
@@ -1958,12 +2060,16 @@ async def CheckFreeTrialView():
         ]
         )
 async def OpenTrade(interaction:discord.interactions , status:int , stock:str , strike:float , direetion:int ,openprice:float ,expiry:str ,opendate:str = None ,closeprice:float = None , publish:str = None):
+    logger.info("OpenTrade command executed by %s", interaction.user)
     await interaction.response.defer(ephemeral=True)
     if opendate == None :
         opentime =  getTime(timeStamp=True)
     else:
         # try :
         date_object = getTime(strTime=opendate)
+        if not date_object:
+            await interaction.followup.send(f"Invalid date format for `opendate`. Please use `MM/DD` or `MM/DD/YY`.")
+            return
         opentime = (date_object.timestamp())
         timenow =  getTime(timeStamp=True)
         if opentime > timenow :
@@ -2007,6 +2113,7 @@ async def OpenTrade(interaction:discord.interactions , status:int , stock:str , 
         ]
         )
 async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closeprice:float =None , status:int = None,openprice:float = None , opendate:str = None , publish:str = None):
+    logger.info("UpdateTrade command executed by %s", interaction.user)
     await interaction.response.defer(ephemeral=True)
     timenow =  getTime(timeStamp= True)
     
@@ -2033,6 +2140,9 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
 
     if opendate != None :
         date_object = getTime(strTime=opendate)
+        if not date_object:
+            await interaction.followup.send(f"Invalid date format for `opendate`. Please use `MM/DD` or `MM/DD/YY`.")
+            return
 
         opentime = (date_object.timestamp())
         # if opentime > timenow :
@@ -2049,6 +2159,7 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
 
 @UpdateTrade.autocomplete('trade_id')
 async def UpdateTradeCompleteClient(interaction: discord.Interaction , current: str = "") :
+    logger.info("UpdateTradeCompleteClient autocomplete triggered for %s", interaction.user)
     dbs = cddb(fun="co")
 
     dbs[1].execute("SELECT * FROM trades order by id desc limit 50")
@@ -2077,6 +2188,7 @@ async def UpdateTradeCompleteClient(interaction: discord.Interaction , current: 
 #     pass 
 # ================================ 
 async def ClearAllMessages(channel_id):
+    logger.info("ClearAllMessages called for channel_id=%s", channel_id)
     channel = client.get_channel(channel_id)
     if not channel:
         return
@@ -2091,7 +2203,7 @@ async def ClearAllMessages(channel_id):
 
 @client.event
 async def on_ready():
-    print("WE ARE READY")
+    logger.info("Bot is ready and online.")
     try:
         synced = await client.tree.sync()
         print(f"Synceed {len(synced)} command(s)")
@@ -2109,6 +2221,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    # This function is just a wrapper now, logging is in main()
     if message.channel.id == mainconfig["temprole-channel"] and message.content == "stats" :
 
         if usersData and RolesLines :
@@ -2122,6 +2235,7 @@ async def on_message(message):
 @client.tree.command(name="list_servers", description="List all Discord servers the bot is in")
 @app_commands.check(is_admin)
 async def list_servers(interaction: discord.Interaction):
+    logger.info("list_servers command executed by %s", interaction.user)
     guilds = client.guilds
     embed = discord.Embed(
         title="Bot Server List", 
@@ -2140,6 +2254,7 @@ async def list_servers(interaction: discord.Interaction):
 class RemoveServerButton(discord.ui.View):
     def __init__(self, server_id: int, has_regular: bool = False, has_promo: bool = False):
         super().__init__(timeout=None)
+        logger.info("RemoveServerButton view initialized for server_id=%s", server_id)
         self.server_id = server_id
         
         # Only add buttons for configurations that exist
@@ -2162,6 +2277,7 @@ class RemoveServerButton(discord.ui.View):
             self.add_item(remove_promo_btn)
 
     async def remove_regular_server(self, button_interaction: discord.Interaction):
+        logger.info("remove_regular_server button clicked by %s for server_id=%s", button_interaction.user, self.server_id)
         if not is_admin(button_interaction):
             await button_interaction.response.send_message("You don't have permission to do this!", ephemeral=True)
             return
@@ -2180,6 +2296,7 @@ class RemoveServerButton(discord.ui.View):
         await button_interaction.message.edit(view=self)
 
     async def remove_promo_server(self, button_interaction: discord.Interaction):
+        logger.info("remove_promo_server button clicked by %s for server_id=%s", button_interaction.user, self.server_id)
         if not is_admin(button_interaction):
             await button_interaction.response.send_message("You don't have permission to do this!", ephemeral=True)
             return
@@ -2200,6 +2317,7 @@ class RemoveServerButton(discord.ui.View):
 @client.tree.command(name="view_server_config", description="View configuration for a specific server")
 @app_commands.check(is_admin)
 async def view_server_config(interaction: discord.Interaction, server_id: str):
+    logger.info("view_server_config command executed by %s for server_id=%s", interaction.user, server_id)
     try:
         server_id = int(server_id)
         dbs = cddb(fun="co")
@@ -2232,6 +2350,7 @@ async def view_server_config(interaction: discord.Interaction, server_id: str):
         }
 
         def add_config_fields(config, prefix=""):
+            logger.info("add_config_fields helper called")
             if 'Daytrade' in config:
                 channel = guild.get_channel(config['Daytrade']['channel_id']) if guild else None
                 channel_str = f"<#{config['Daytrade']['channel_id']}>" if channel else "Can't Find"
@@ -2286,6 +2405,7 @@ async def view_server_config(interaction: discord.Interaction, server_id: str):
 
 @view_server_config.autocomplete('server_id')
 async def view_server_config_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    logger.info("view_server_config_autocomplete triggered for %s", interaction.user)
     dbs = cddb(fun="co")
     choices = []
     
@@ -2316,6 +2436,7 @@ async def view_server_config_autocomplete(interaction: discord.Interaction, curr
     ]
 )
 async def list_configured_servers(interaction: discord.Interaction, server_type: str = "all"):
+    logger.info("list_configured_servers command executed by %s with type=%s", interaction.user, server_type)
     dbs = cddb(fun="co")
     
     # Get servers based on type
@@ -2372,11 +2493,6 @@ async def list_configured_servers(interaction: discord.Interaction, server_type:
 mainconfig = get_from_json()
 
 if __name__ == '__main__':
+    logger.info("Starting bot...")
     openai.api_key = mainconfig['openAiKey']
     client.run(mainconfig['token'])
-
-
-
-
-
-
