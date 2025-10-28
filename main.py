@@ -1260,7 +1260,7 @@ async def main(message) :
             img_message = await img_message.send(file = img)
             img_url = img_message.attachments[0].url
 
-        embedd = discord.Embed(title=title , description=description+"\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)"" , colour = color)
+        embedd = discord.Embed(title=title , description=description+"\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , colour = color)
         embedd.set_footer(text="PrismaGroup @ Namrood  -  For education and entertainment purposes only ", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)
 
