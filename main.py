@@ -189,7 +189,7 @@ async def trade(interaction:discord.interactions , status:int , stock:str , stri
         
         )
 async def utrade(interaction:discord.interactions , trade_id :int , closeprice:float =None , status:int = None,openprice:float = None , opendate:str = None):
-    timenow =  getTime(timeStamp= True)
+    timenow =  utils.getTime(timeStamp= True)
     
     dbs = db_utils.cddb(fun="co")
     dbs[1].execute("SELECT id FROM trades WHERE id = ?" , (trade_id,))
@@ -1463,7 +1463,18 @@ async def RemoveAllRoles(userId):
         Session.delete(roleObj)
 
     EndSession(Session)
+async def has_any_role(user_id: int) -> bool:
+    guild = client.get_guild(mainconfig["guildid"])  # Get the guild object
+    if not guild:
+        return False  # Guild not found
+    
+    member = guild.get_member(user_id)  # Get the member object
+    if not member:
+        return False  # User not found in the guild
 
+    user_roles = {role.id for role in member.roles}  # Get the user's role IDs
+
+    return bool(user_roles & set(mainconfig["whitelistRoles"]))  # Check if there's any matching role
 @client.tree.command(name="temp_role" , description="temp_role command")
 async def temp_role(interaction:discord.interactions, member: discord.Member, role: discord.Role , duration:int):
     await interaction.response.defer()
