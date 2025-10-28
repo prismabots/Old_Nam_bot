@@ -535,8 +535,8 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
                 room = client.get_channel(mainconfig['photos_room'])
                 img_message = await room.send(file = discord.File(file, f"gragh.png"))
                 img_url = img_message.attachments[0].url
-                embedd = discord.Embed(title="" , description="[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , colour = 0xFFFFFF)
-                embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+                embedd = discord.Embed(title="" , description="[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)    -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , colour = 0xFFFFFF)
+                embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
                 embedd.set_image(url=img_url)
                 await publishMsg("Daytrade" , embed=embedd)
             if publish == 2 :
@@ -562,8 +562,8 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def trim(interaction:discord.interactions ,stock :str , percentage:int  , publish:str = None ,text:str  = ""):
-    embedd = discord.Embed(title=f"TRIM /TAKE PROFIT : 💰" , description=f"**TRADE : ** {stock}\n\nProfit percentage : **{percentage}%**\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x3AFF00)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd = discord.Embed(title=f"TRIM /TAKE PROFIT : 💰" , description=f"**TRADE : ** {stock}\n\nProfit percentage : **{percentage}%**\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0x3AFF00)
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
     await interaction.response.send_message(embed = embedd)
     if publish :
@@ -580,7 +580,7 @@ async def trim(interaction:discord.interactions ,stock :str , percentage:int  , 
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def avg(interaction:discord.interactions  ,stock :str , contract:str  ,publish:str = None , text:str  = ""):
-    embedd = discord.Embed(title=f"AVERAGE TRADE : 🏥 " , description=f"**TRADE : ** {stock}\n\n**Contract to buy :** {contract}\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xF7FF00)
+    embedd = discord.Embed(title=f"AVERAGE TRADE : 🏥 " , description=f"**TRADE : ** {stock}\n\n**Contract to buy :** {contract}\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0xF7FF00)
     embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
     await interaction.response.send_message(embed = embedd)
@@ -599,8 +599,8 @@ async def avg(interaction:discord.interactions  ,stock :str , contract:str  ,pub
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def lotto(interaction:discord.interactions , text:str , publish:str = None ):
-    embedd = discord.Embed(title=f"LOTTO TRADE-RISKY" , description=f"**{text}**\n Size for what you can afford to lose - Mange your risk\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x9300FF)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd = discord.Embed(title=f"LOTTO TRADE-RISKY" , description=f"**{text}**\n Size for what you can afford to lose - Mange your risk\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0x9300FF)
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
 
     await interaction.response.send_message(embed = embedd)
     if publish :
@@ -801,7 +801,7 @@ async def get_bto_image(stock:str , text1:str , text2:str , publish:str = None):
         room = client.get_channel(mainconfig['photos_room'])
         img_message = await room.send(file = discord.File(file, f"bto.jpg"))
         img_url = img_message.attachments[0].url
-        embedd = discord.Embed(title="" , description="\n[@Prismagroup LLC](https://www.prismagroup.online/)" , colour = 0x5e9371)
+        embedd = discord.Embed(title="" , description="\n[@Prismagroup LLC](https://www.prismagroup.online/)  -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , colour = 0x5e9371)
         embedd.set_footer(text="Namrood @ PrismaGroup LLC   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)        
         # await interaction.response.send_message(embed = embedd)                
@@ -849,7 +849,7 @@ async def get_profit_image(text , percentage ,publish):
         room = client.get_channel(mainconfig['photos_room'])
         img_message = await room.send(file = discord.File(file, f"profit.jpg"))
         img_url = img_message.attachments[0].url
-        embedd = discord.Embed(title="" , description="\n[@Prismagroup LLC](https://www.prismagroup.online/)" , colour = 0x33fff3)
+        embedd = discord.Embed(title="" , description="\n[@Prismagroup LLC](https://www.prismagroup.online/)  -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , colour = 0x33fff3)
         embedd.set_footer(text="Namrood @ PrismaGroup LLC   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)        
     file.close()
@@ -914,7 +914,7 @@ async def gamble(interaction:discord.interactions , text1:str ,text2:str , publi
         room = client.get_channel(mainconfig['photos_room'])
         img_message = await room.send(file = discord.File(file, f"gamble.jpg"))
         img_url = img_message.attachments[0].url
-        embedd = discord.Embed(title="" , description="\n[@Prismagroup LLC](https://www.prismagroup.online/e)" , colour = 0xFFFFFF)
+        embedd = discord.Embed(title="" , description="\n[@Prismagroup LLC](https://www.prismagroup.online/e)  -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , colour = 0xFFFFFF)
         embedd.set_footer(text="Namrood @ PrismaGroup LLC   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)        
         await interaction.response.send_message(embed = embedd)                
@@ -1018,7 +1018,7 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
     else:
         text = text.replace("%n" , "\n")
 
-    embedd = discord.Embed(title=f'UPDATE' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xFFE800)
+    embedd = discord.Embed(title=f'UPDATE' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0xFFE800)
     embeds = []
     if img :
         embedd.set_image(url=img)
@@ -1026,11 +1026,11 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
     if img2 :
         embedd2 = discord.Embed(title=f'' , description=f"" , color=0xFFE800)
         embedd2.set_image(url=img2)
-        embedd2.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd2.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embeds.append(embedd)
         embeds.append(embedd2)
     else:
-        embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embeds.append(embedd)
     await interaction.followup.send(embeds = embeds)
     if publish :
@@ -1047,8 +1047,8 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def stc(interaction:discord.interactions , text:str , img:str = None , publish:str = None ):
-    embedd = discord.Embed(title=f'Sell To Close' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xFF0000)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd = discord.Embed(title=f'Sell To Close' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0xFF0000)
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     if img :
         embedd.set_image(url=img)
         
@@ -1073,8 +1073,8 @@ async def idi(interaction:discord.interactions , text:str , img:str = None ,img2
         text = await ConvertText(text)
     else:
         text = text.replace("%n" , "\n")
-    embedd = discord.Embed(title=f'Idea' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xFFFFFF)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd = discord.Embed(title=f'Idea' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0xFFFFFF)
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
     embeds = []
     if img :
@@ -1085,7 +1085,7 @@ async def idi(interaction:discord.interactions , text:str , img:str = None ,img2
     if img2 :
         embedd2 = discord.Embed(title=f'' , description=f"" , color=0xFFFFFF)
         embedd2.set_image(url=img2)
-        embedd2.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd2.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
 
         embeds.append(embedd2)
     
@@ -1135,8 +1135,8 @@ async def promo(interaction:discord.interactions , text:str ,title:str = "SMALL 
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def BTO(interaction:discord.interactions , text:str , img:str = None , publish:str = None ):
-    embedd = discord.Embed(title=f'Buy To Open' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x2AFF00)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd = discord.Embed(title=f'Buy To Open' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0x2AFF00)
+    embedd.set_footer(text="PrismaGroup @ Namrood  - For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     if img :
         embedd.set_image(url=img)
         
@@ -1260,8 +1260,8 @@ async def main(message) :
             img_message = await img_message.send(file = img)
             img_url = img_message.attachments[0].url
 
-        embedd = discord.Embed(title=title , description=description+"\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , colour = color)
-        embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd = discord.Embed(title=title , description=description+"\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)"" , colour = color)
+        embedd.set_footer(text="PrismaGroup @ Namrood  -  For education and entertainment purposes only ", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)
 
         await publishMsg(channel_ ,embed= embedd)
