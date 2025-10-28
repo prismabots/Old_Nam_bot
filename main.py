@@ -1,5 +1,6 @@
 import discord , random , asyncio ,sqlite3 , json  , copy , importlib , os , requests ,pytz , math
 import color_form , createGragh
+import utils
 from discord.ext import commands ,tasks 
 from discord import Embed , app_commands 
 from discord.ui import Button , View , Modal    
@@ -75,28 +76,6 @@ def get_from_json():
     return config
 
 
-def encode(table = None , num = 6):
-    # slug = hashlib.sha256(str(num).encode()).hexdigest()[:6].upper()
-    start = int(f"1{0:0{num}}")
-    end = int(f"1{0:0{num+1}}") - 1
-    slug = random.choice(range(start , end))
-    if table == None :
-        pass
-     
-    else:
-        dbs = cddb(fun="co")
-        dbs[1].execute(f"SELECT id FROM {table} where id = ?"  , (slug,))
-        check = dbs[1].fetchone()
-        if check == None :
-            pass
-        else:
-            encode(table)   
-
-        cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-
-    return slug        
-
-
 
 
 def is_server(guild_id ):
@@ -125,37 +104,6 @@ def is_admin(interaction):
     else:
         return False
 
-
-
-def getTime(timeStamp = None , stampTime = None , strTime = None):
-    eastern_timezone = pytz.timezone("America/New_York")  
-    utc_now = datetime.utcnow()
-    eastern_now = pytz.utc.localize(utc_now).astimezone(eastern_timezone)
-    if timeStamp == True :
-
-        return eastern_now.timestamp()
-    
-    elif stampTime != None :
-        time = datetime.utcfromtimestamp(stampTime)
-        time.replace(year=utc_now.year )
-        eastern_time = pytz.utc.localize(time).astimezone(eastern_timezone)
-        return eastern_time
-    
-    elif strTime != None :
-        if len(strTime) <= 5 : 
-            time = datetime.strptime(strTime, "%m/%d")
-            eastern_time = eastern_timezone.localize(datetime(day=time.day , month=time.month , year=utc_now.year))
-        else:
-            time = datetime.strptime(strTime, "%m/%d/%y")
-
-            eastern_time = eastern_timezone.localize(datetime(day=time.day , month=time.month , year=time.year))
-        
-        return eastern_time
-    else:
-        return eastern_now
-
-
-
 class MyBot(commands.Bot):
     def __init__(self):
 
@@ -168,14 +116,6 @@ class MyBot(commands.Bot):
 
 client = MyBot()
 
-
-def get_hex_color(input_text):
-    if input_text:
-        try:
-            return int(input_text, 16)
-        except ValueError:
-            pass  # handle invalid hex string
-    return None
 
 #-------------------------------------------------------------------
 
@@ -288,24 +228,24 @@ async def setup(interaction:discord.interactions , type:str , channel:discord.Te
         )
 async def trade(interaction:discord.interactions , status:int , stock:str , strike:float , direetion:int ,openprice:float ,expiry:str ,opendate:str = None ,closeprice:float = None):
     if opendate == None :
-        opentime =  getTime(timeStamp=True)
+        opentime =  utils.getTime(timeStamp=True)
     else:
         # try :
-        date_object = getTime(strTime=opendate)
+        date_object = utils.getTime(strTime=opendate)
         opentime = (date_object.timestamp())
-        timenow =  getTime(timeStamp=True)
+        timenow =  utils.getTime(timeStamp=True)
         if opentime > timenow :
-             date_object = date_object.replace(year=getTime().year - 1)
+             date_object = date_object.replace(year=utils.getTime().year - 1)
              opentime = (date_object.timestamp())
 
-    # trade_id = encode(table="trades" , num=4)
+    # trade_id = utils.encode(cddb, table="trades" , num=4)
     dbs = cddb(fun="co")
     if status == 1 :
         opendate = opentime
         closedate = 0
     elif status == 2 :
         opendate = opentime
-        closedate = getTime(timeStamp=True)        
+        closedate = utils.getTime(timeStamp=True)        
 
     dbs[1].execute("INSERT INTO trades( status , stock , strike , direetion , open_price ,open_date , close_date , expiry) VALUES ( ? , ? , ? , ? , ? , ? , ? , ?)" , 
     (status , stock , strike , direetion , openprice , opendate , closedate , expiry) )
@@ -355,11 +295,11 @@ async def utrade(interaction:discord.interactions , trade_id :int , closeprice:f
         dbs[1].execute("UPDATE trades set close_price = ? where id = ?" , (closeprice,trade_id))
 
     if opendate != None :
-        date_object = getTime(strTime=opendate)
+        date_object = utils.getTime(strTime=opendate)
 
         opentime = (date_object.timestamp())
         # if opentime > timenow :
-        #      date_object = date_object.replace(year=getTime().year - 1)
+        #      date_object = date_object.replace(year=utils.getTime().year - 1)
         #      opentime = (date_object.timestamp())        
         dbs[1].execute("UPDATE trades set open_date = ? where id = ?" , (opentime,trade_id))
 
@@ -384,18 +324,9 @@ async def dtrade(interaction:discord.interactions , trade_id :int ):
     cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
 
 
-def getBiggerLenght(values):
-    biggerLenth = 0
-    for value in values :
-        if len(str(value)) > biggerLenth :
-            biggerLenth = len(str(value))
-    return biggerLenth
-
-
-
 def getTodayTrades():
     dbs = cddb(fun="co")
-    daystart = getTime().replace(hour= 0 , minute= 0 , second= 0 , microsecond= 0)
+    daystart = utils.getTime().replace(hour= 0 , minute= 0 , second= 0 , microsecond= 0)
 
     dbs[1].execute("SELECT * FROM trades where open_date >= ? ORDER BY open_date" , (daystart.timestamp() , ))  
     trades = dbs[1].fetchall()      
@@ -405,7 +336,7 @@ def getTodayTrades():
 
 def getThisMonthTrades(justTime = False):
     dbs = cddb(fun="co")
-    last_1_month = getTime().replace(day=1,hour=0 , minute= 0 , second= 0 , microsecond= 0)
+    last_1_month = utils.getTime().replace(day=1,hour=0 , minute= 0 , second= 0 , microsecond= 0)
     dbs[1].execute("SELECT * FROM trades where open_date >= ? ORDER BY open_date" , (last_1_month.timestamp() , ))  
     trades = dbs[1].fetchall()
     if last_1_month.month == 12:
@@ -422,7 +353,7 @@ def getThisMonthTrades(justTime = False):
 
 def getThisWeekTrades(justTime = False):
     dbs = cddb(fun="co")
-    now = getTime().replace(hour=0 , minute= 0 , second= 0 , microsecond= 0)
+    now = utils.getTime().replace(hour=0 , minute= 0 , second= 0 , microsecond= 0)
     days_until_last_monday = now.weekday() 
     last_monday = now - timedelta(days=days_until_last_monday)
     lastweek  = last_monday.timestamp()
@@ -440,14 +371,14 @@ def getThisWeekTrades(justTime = False):
 
 def getCustomTimeTrades(start , end):
     dbs = cddb(fun="co")
-    now = getTime()
+    now = utils.getTime()
 
-    start_date_object = getTime(strTime=start)
+    start_date_object = utils.getTime(strTime=start)
     # if start_date_object.timestamp() > now.timestamp() :
     #     start_date_object = start_date_object.replace(year=now.year -1)
 
 
-    end_date_object = getTime(strTime=end)
+    end_date_object = utils.getTime(strTime=end)
 
     # if end_date_object.timestamp() > now.timestamp() :
     #     end_date_object = end_date_object.replace(year=now.year -1)
@@ -466,8 +397,8 @@ def getCustomTimeTrades(start , end):
 
 def getDayStats(day , style = 0):
     dbs = cddb(fun="co")
-    now = getTime()
-    start_date_object = getTime(strTime=day)
+    now = utils.getTime()
+    start_date_object = utils.getTime(strTime=day)
     # if start_date_object.timestamp() > now.timestamp() :
     #     start_date_object = start_date_object.replace(year=now.year -1)
     end_date_object = start_date_object + timedelta(days=1) 
@@ -573,7 +504,7 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
                     win += 1
                 elif float(resualt) < 0 :
                     lose += 1 
-            line = f"`{trade[0]}` **{getTime(stampTime= trade[7]).strftime('%m/%d')}** |   {trade[2]}   {trade[3]}   **{direetion}**  **{trade[9]}**  ``From:{trade[5]} To:{close_price}``   {resualt}% **{status}**"
+            line = f"`{trade[0]}` **{utils.getTime(stampTime= trade[7]).strftime('%m/%d')}** |   {trade[2]}   {trade[3]}   **{direetion}**  **{trade[9]}**  ``From:{trade[5]} To:{close_price}``   {resualt}% **{status}**"
             trades_message_1 = f'{trades_message_1}{line} \n'
             trades_lines.append(line)
         
@@ -604,17 +535,17 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
             trades_message_2 = f"```ansi\n{color_form.changeColor(f'{title}' , 'white')}\n"
 
             lengh = 2
-            l1 = getBiggerLenght([f"{getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trades])
-            l2 = getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trades])
-            l3 = getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trades])
-            l4 = getBiggerLenght([trade[9] for trade in trades])
-            l5 = getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trades])
-            l6 = getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trades])
+            l1 = utils.getBiggerLenght([f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trades])
+            l2 = utils.getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trades])
+            l3 = utils.getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trades])
+            l4 = utils.getBiggerLenght([trade[9] for trade in trades])
+            l5 = utils.getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trades])
+            l6 = utils.getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trades])
             # l7 = getBiggerLenght([color_form.changeColor('Runners' , 'blue') if trade[1] == 1 or trade[1] == 3 else color_form.changeColor('Closed' , 'green' , 'blue_black') for trade in trades])    
-            l7 = getBiggerLenght([("✅" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "🛑") if trade[1] == 2 else ("🏃" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "⌛") for trade in trades ])
+            l7 = utils.getBiggerLenght([("✅" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "🛑") if trade[1] == 2 else ("🏃" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "⌛") for trade in trades ])
             for trade in trades :
 
-                c1 = f"{getTime(stampTime=trade[7]).strftime('%m/%d')}"
+                c1 = f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}"
                 c2 = color_form.changeColor(trade[2] , backGround='light_gray' )
                 c3 = f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}"
                 c4 = trade[9]
@@ -687,7 +618,7 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
         data = getThisMonthTrades(justTime=True)
         lastMonth = data[0] 
         title = data[1]
-        now = getTime().replace(hour=0 , minute=0 , second= 0 , microsecond= 0 )
+        now = utils.getTime().replace(hour=0 , minute=0 , second= 0 , microsecond= 0 )
         days = [lastMonth.strftime("%m/%d")]
 
         for i in range(1,32):
@@ -713,7 +644,7 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
         data = getThisWeekTrades(justTime=True)
         lastMonday = data[0]
         title = data[1]
-        now = getTime().replace(hour=0, minute=0, second=0, microsecond=0)
+        now = utils.getTime().replace(hour=0, minute=0, second=0, microsecond=0)
 
         days = [lastMonday.strftime("%m/%d")]
         for i in range(1, 7):
@@ -749,8 +680,8 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
         if start != None and end != None :
 
             title = f"Trades Summary (From {start} To {end})"
-            startObj = getTime(strTime=start)
-            endObj = getTime(strTime=end)
+            startObj = utils.getTime(strTime=start)
+            endObj = utils.getTime(strTime=end)
             days = []
             for i in range((endObj - startObj).days + 2) :
                 
@@ -786,7 +717,7 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
                 img_message = await room.send(file = discord.File(file, f"gragh.png"))
                 img_url = img_message.attachments[0].url
                 embedd = discord.Embed(title="" , description="[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , colour = 0xFFFFFF)
-                embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+                embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
                 embedd.set_image(url=img_url)
                 await publishMsg("Daytrade" , embed=embedd)
             if publish == 2 :
@@ -813,7 +744,7 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
         ],)
 async def trim(interaction:discord.interactions ,stock :str , percentage:int  , publish:str = None ,text:str  = ""):
     embedd = discord.Embed(title=f"TRIM /TAKE PROFIT : 💰" , description=f"**TRADE : ** {stock}\n\nProfit percentage : **{percentage}%**\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x3AFF00)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
     await interaction.response.send_message(embed = embedd)
     if publish :
@@ -850,7 +781,7 @@ async def avg(interaction:discord.interactions  ,stock :str , contract:str  ,pub
         ],)
 async def lotto(interaction:discord.interactions , text:str , publish:str = None ):
     embedd = discord.Embed(title=f"LOTTO TRADE-RISKY" , description=f"**{text}**\n Size for what you can afford to lose - Mange your risk\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x9300FF)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
 
     await interaction.response.send_message(embed = embedd)
     if publish :
@@ -973,17 +904,17 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
         trades_message_2 = f"```ansi\n"
 
         lengh = 2
-        l1 = getBiggerLenght([f"{getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trades])
-        l2 = getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trades])
-        l3 = getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trades])
-        l4 = getBiggerLenght([trade[9] for trade in trades])
-        l5 = getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trades])
-        l6 = getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trades])
+        l1 = utils.getBiggerLenght([f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trades])
+        l2 = utils.getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trades])
+        l3 = utils.getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trades])
+        l4 = utils.getBiggerLenght([trade[9] for trade in trades])
+        l5 = utils.getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trades])
+        l6 = utils.getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trades])
         # l7 = getBiggerLenght([color_form.changeColor('Runners' , 'blue') if trade[1] == 1 or trade[1] == 3 else color_form.changeColor('Closed' , 'green' , 'blue_black') for trade in trades])    
-        l7 = getBiggerLenght([("✅" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "🛑") if trade[1] == 2 else ("🏃" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "⌛") for trade in trades ])
+        l7 = utils.getBiggerLenght([("✅" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "🛑") if trade[1] == 2 else ("🏃" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "⌛") for trade in trades ])
         for trade in trades :
             tradesNum += 1
-            c1 = f"{getTime(stampTime=trade[7]).strftime('%m/%d')}"
+            c1 = f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}"
             c2 = color_form.changeColor(trade[2] , backGround='light_gray' )
             c3 = f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}"
             c4 = trade[9]
@@ -1273,11 +1204,11 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
     if img2 :
         embedd2 = discord.Embed(title=f'' , description=f"" , color=0xFFE800)
         embedd2.set_image(url=img2)
-        embedd2.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd2.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embeds.append(embedd)
         embeds.append(embedd2)
     else:
-        embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embeds.append(embedd)
     await interaction.followup.send(embeds = embeds)
     if publish :
@@ -1295,7 +1226,7 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
         ],)
 async def stc(interaction:discord.interactions , text:str , img:str = None , publish:str = None ):
     embedd = discord.Embed(title=f'Sell To Close' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xFF0000)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     if img :
         embedd.set_image(url=img)
         
@@ -1321,7 +1252,7 @@ async def idi(interaction:discord.interactions , text:str , img:str = None ,img2
     else:
         text = text.replace("%n" , "\n")
     embedd = discord.Embed(title=f'Idea' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0xFFFFFF)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
     embeds = []
     if img :
@@ -1332,7 +1263,7 @@ async def idi(interaction:discord.interactions , text:str , img:str = None ,img2
     if img2 :
         embedd2 = discord.Embed(title=f'' , description=f"" , color=0xFFFFFF)
         embedd2.set_image(url=img2)
-        embedd2.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd2.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
 
         embeds.append(embedd2)
     
@@ -1341,7 +1272,7 @@ async def idi(interaction:discord.interactions , text:str , img:str = None ,img2
         await publishMsg(publish , embeds=embeds)
 
 async def promo_command(text , img , publish , link = "https://discord.gg/m9WAsJdFrn" , title = "SMALL CAP SHARES TRADE IDEA" , isChatGpt = False , sponsor = "" , color = "ff8b00"):
-    color = get_hex_color(color)
+    color = utils.get_hex_color(color)
     if isChatGpt == True:
         newText = await ConvertText(text , 2)
     else:
@@ -1383,7 +1314,7 @@ async def promo(interaction:discord.interactions , text:str ,title:str = "SMALL 
         ],)
 async def BTO(interaction:discord.interactions , text:str , img:str = None , publish:str = None ):
     embedd = discord.Embed(title=f'Buy To Open' , description=f"{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , color=0x2AFF00)
-    embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+    embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     if img :
         embedd.set_image(url=img)
         
@@ -1508,7 +1439,7 @@ async def main(message) :
             img_url = img_message.attachments[0].url
 
         embedd = discord.Embed(title=title , description=description+"\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn)" , colour = color)
-        embedd.set_footer(text="PrismaGroup @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
+        embedd.set_footer(text="PrismaGroup @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embedd.set_image(url=img_url)
 
         await publishMsg(channel_ ,embed= embedd)
@@ -1630,55 +1561,6 @@ error_embed = discord.Embed(
     description="An unexpected error occurred. Please try again later or contact support.",
     color=discord.Color.red()
 )
-def format_time(seconds):
-    if seconds < 60:
-        return f"{seconds} seconds"
-    elif seconds < 3600:
-        minutes = seconds // 60
-        return f"{minutes} minute{'s' if minutes > 1 else ''}"
-    elif seconds < 86400:
-        hours = seconds // 3600
-        return f"{hours} hour{'s' if hours > 1 else ''}"
-    else:
-        days = seconds // 86400
-        return f"{days} day{'s' if days > 1 else ''}"
-    
-
-async def has_any_role(user_id: int) -> bool:
-    guild = client.get_guild(mainconfig["guildid"])  # Get the guild object
-    if not guild:
-        return False  # Guild not found
-    
-    member = guild.get_member(user_id)  # Get the member object
-    if not member:
-        return False  # User not found in the guild
-
-    user_roles = {role.id for role in member.roles}  # Get the user's role IDs
-
-    return bool(user_roles & set(mainconfig["whitelistRoles"]))  # Check if there's any matching role
-
-
-# =================================================================== TempRole 
-def convert_to_seconds(time_str):
-    try:
-        time_units = {
-            's': 1,        # seconds
-            'm': 60,       # minutes
-            'h': 3600,     # hours
-            'd': 86400,    # days
-            'w': 604800,    # weeks
-            'mn': 86400 * 30,    # months
-        }
-        
-        total_seconds = 0
-        matches = re.findall(r'(\d+)([smhdw])', time_str)
-
-        for value, unit in matches:
-            total_seconds += int(value) * time_units[unit]
-
-        return total_seconds
-    except:
-        return
 
 async def addTempRole(user_id  ,  role_id , duration , bybassAddRole = False):
     # seconds = convert_to_seconds(duration)
@@ -1708,7 +1590,7 @@ async def addTempRole(user_id  ,  role_id , duration , bybassAddRole = False):
             logChannel = client.get_channel(logChannelid)
             embed = discord.Embed(
                 title="Role Assigned",
-                description=f"✅ Successfully added `{role.name}` to {member.mention}! for {format_time(duration)}",
+                description=f"✅ Successfully added `{role.name}` to {member.mention}! for {utils.format_time(duration)}",
                 color=discord.Color.green()
             )
             
@@ -1729,7 +1611,7 @@ async def addTempRole(user_id  ,  role_id , duration , bybassAddRole = False):
             return True , embed
     else:
         embed = discord.Embed(
-            title="Wrong Duration Format",
+            title="Wrong Duration Format", # type: ignore
             description=f"❌ wrong formt for duration `{duration}`!\nExample --> 1h , 2m , 2d , 6w , 1mn (month)",
             color=discord.Color.red()
         )
@@ -1882,7 +1764,7 @@ demo_embed = discord.Embed(
     description="Enjoy limited-time access to our features with a free trial! Click the button below to claim yours now.",
     color=discord.Color.blue()
 )
-demo_embed.set_footer(text="prismagroup LLC @ Namrood   -  NOT A FINANCIAL ADVICE", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png")
+demo_embed.set_footer(text="prismagroup LLC @ Namrood   -  [DISCLAIMER](https://prisma.short.gy/disclaimer)", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png")
 
 class FreeTrialView(discord.ui.View):
     def __init__(self):
@@ -1960,24 +1842,24 @@ async def CheckFreeTrialView():
 async def OpenTrade(interaction:discord.interactions , status:int , stock:str , strike:float , direetion:int ,openprice:float ,expiry:str ,opendate:str = None ,closeprice:float = None , publish:str = None):
     await interaction.response.defer(ephemeral=True)
     if opendate == None :
-        opentime =  getTime(timeStamp=True)
+        opentime =  utils.getTime(timeStamp=True)
     else:
         # try :
-        date_object = getTime(strTime=opendate)
+        date_object = utils.getTime(strTime=opendate)
         opentime = (date_object.timestamp())
-        timenow =  getTime(timeStamp=True)
+        timenow =  utils.getTime(timeStamp=True)
         if opentime > timenow :
-             date_object = date_object.replace(year=getTime().year - 1)
+             date_object = date_object.replace(year=utils.getTime().year - 1)
              opentime = (date_object.timestamp())
 
-    # trade_id = encode(table="trades" , num=4)
+    # trade_id = utils.encode(cddb, table="trades" , num=4)
     dbs = cddb(fun="co")
     if status == 1 :
         opendate = opentime
         closedate = 0
     elif status == 2 :
         opendate = opentime
-        closedate = getTime(timeStamp=True)        
+        closedate = utils.getTime(timeStamp=True)        
 
     dbs[1].execute("INSERT INTO trades( status , stock , strike , direetion , open_price ,open_date , close_date , expiry) VALUES ( ? , ? , ? , ? , ? , ? , ? , ?)" , 
     (status , stock , strike , direetion , openprice , opendate , closedate , expiry) )
@@ -2008,7 +1890,7 @@ async def OpenTrade(interaction:discord.interactions , status:int , stock:str , 
         )
 async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closeprice:float =None , status:int = None,openprice:float = None , opendate:str = None , publish:str = None):
     await interaction.response.defer(ephemeral=True)
-    timenow =  getTime(timeStamp= True)
+    timenow =  utils.getTime(timeStamp= True)
     
     dbs = cddb(fun="co")
     trade_id = int(trade_id)
@@ -2032,11 +1914,11 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
         dbs[1].execute("UPDATE trades set close_price = ? where id = ?" , (closeprice,trade_id))
 
     if opendate != None :
-        date_object = getTime(strTime=opendate)
+        date_object = utils.getTime(strTime=opendate)
 
         opentime = (date_object.timestamp())
         # if opentime > timenow :
-        #      date_object = date_object.replace(year=getTime().year - 1)
+        #      date_object = date_object.replace(year=utils.getTime().year - 1)
         #      opentime = (date_object.timestamp())        
         dbs[1].execute("UPDATE trades set open_date = ? where id = ?" , (opentime,trade_id))
 
@@ -2374,9 +2256,3 @@ mainconfig = get_from_json()
 if __name__ == '__main__':
     openai.api_key = mainconfig['openAiKey']
     client.run(mainconfig['token'])
-
-
-
-
-
-
