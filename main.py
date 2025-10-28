@@ -1,6 +1,7 @@
 import discord , random , asyncio ,sqlite3 , json  , copy , importlib , os , requests ,pytz , math
 import color_form , createGragh
 import utils
+import database as db_utils
 from discord.ext import commands ,tasks 
 from discord import Embed , app_commands 
 from discord.ui import Button , View , Modal    
@@ -20,90 +21,6 @@ perfix = "-"
 intentsy = discord.Intents.all()
 
 
-
-
-#====================================================
-
-def cddb(fun ,db = None, cr = None):
-    if fun == "co":
-        # dbs = cddb(fun="co")
-        # cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-        # db = mysql.connect(host="localhost" , user="root" , passwd = "" , port = "3307")
-        db =sqlite3.connect("data.db")
-        cr = db.cursor()
-        cr.execute("""
-            CREATE TABLE IF NOT EXISTS servers (
-                id INTEGER PRIMARY KEY,
-                config TEXT DEFAULT '{}'
-                
-            
-            )
-        """)    
-        cr.execute("""
-            CREATE TABLE IF NOT EXISTS promo_servers (
-                id INTEGER PRIMARY KEY,
-                config TEXT DEFAULT '{}'
-            )
-        """)  
-        cr.execute("""
-            CREATE TABLE IF NOT EXISTS trades (
-                id INTEGER PRIMARY KEY,
-                status INTEGER ,
-                stock TEXT ,
-                strike INTEGER ,
-                direetion INTEGER ,
-                open_price INTEGER ,
-                close_price INTEGER DEFAULT 0 ,
-                open_date INTEGER , 
-                close_date INTEGER DEFAULT 0 ,
-                expiry TEXT
-            )
-        """)    
-
-        return db , cr
-    elif fun == "cn":
-        #cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-        db.commit()
-        cr.close()
-        db.close()
-
-
-
-def get_from_json():
-    with open("config.json" , "r") as config :
-        config = json.load(config)
-
-    return config
-
-
-
-
-def is_server(guild_id ):
-    guild_id = guild_id.guild.id
-    dbs = cddb(fun="co")
-    columeName = "servers" 
-
-    dbs[1].execute(f"INSERT OR IGNORE INTO {columeName}(id) VALUES(?)", (guild_id,))
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-    return True
-
-def is_promo_server(guild_id ):
-    guild_id = guild_id.guild.id
-    dbs = cddb(fun="co")
-    columeName =  "promo_servers"
-
-    dbs[1].execute(f"INSERT OR IGNORE INTO {columeName}(id) VALUES(?)", (guild_id,))
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-    return True
-
-def is_admin(interaction):
-    global mainconfig
-    admin_id = interaction.user.id
-    if admin_id in mainconfig["admins"] :
-        return True
-    else:
-        return False
-
 class MyBot(commands.Bot):
     def __init__(self):
 
@@ -120,7 +37,7 @@ client = MyBot()
 #-------------------------------------------------------------------
 
 @client.tree.command(name= "promo_setup" , description="setup command")
-@app_commands.check(is_promo_server)
+@app_commands.check(db_utils.is_promo_server)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
 
@@ -144,8 +61,8 @@ client = MyBot()
     
         )
 async def promo_setup(interaction:discord.interactions , type:str , channel:discord.TextChannel , status :str , mention : str , namrood :discord.Role = None):
-    if   is_admin(interaction) :
-        dbs = cddb(fun="co")
+    if   db_utils.is_admin(interaction) :
+        dbs = db_utils.cddb(fun="co")
         columeName = "promo_servers"
         dbs[1].execute(f"SELECT config FROM {columeName} where id = ? " , (interaction.guild.id ,))
         guild_config = json.loads(dbs[1].fetchone()[0])
@@ -159,13 +76,13 @@ async def promo_setup(interaction:discord.interactions , type:str , channel:disc
         await interaction.response.send_message("DONE" , ephemeral=True)
         guild_config = json.dumps(guild_config)
         dbs[1].execute(f"UPDATE {columeName} set config = ? where id = ?" , (guild_config , interaction.guild.id))
-        cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])    
+        db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])    
 
 
 
 
 @client.tree.command(name= "setup" , description="setup command")
-@app_commands.check(is_server)
+@app_commands.check(db_utils.is_server)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
 
@@ -189,8 +106,8 @@ async def promo_setup(interaction:discord.interactions , type:str , channel:disc
     
         )
 async def setup(interaction:discord.interactions , type:str , channel:discord.TextChannel , status :str , mention : str , namrood :discord.Role = None):
-    if   is_admin(interaction) :
-        dbs = cddb(fun="co")
+    if   db_utils.is_admin(interaction) :
+        dbs = db_utils.cddb(fun="co")
         columeName = "servers" 
         dbs[1].execute(f"SELECT config FROM {columeName} where id = ? " , (interaction.guild.id ,))
         guild_config = json.loads(dbs[1].fetchone()[0])
@@ -204,13 +121,13 @@ async def setup(interaction:discord.interactions , type:str , channel:discord.Te
         await interaction.response.send_message("DONE" , ephemeral=True)
         guild_config = json.dumps(guild_config)
         dbs[1].execute(f"UPDATE {columeName} set config = ? where id = ?" , (guild_config , interaction.guild.id))
-        cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])    
+        db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])    
 
 
 
 
 @client.tree.command(name= "tr" , description="create trade command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     status=[
@@ -238,8 +155,8 @@ async def trade(interaction:discord.interactions , status:int , stock:str , stri
              date_object = date_object.replace(year=utils.getTime().year - 1)
              opentime = (date_object.timestamp())
 
-    # trade_id = utils.encode(cddb, table="trades" , num=4)
-    dbs = cddb(fun="co")
+    # trade_id = utils.encode(db_utils.cddb, table="trades" , num=4)
+    dbs = db_utils.cddb(fun="co")
     if status == 1 :
         opendate = opentime
         closedate = 0
@@ -253,13 +170,13 @@ async def trade(interaction:discord.interactions , status:int , stock:str , stri
     if closeprice != None :
         dbs[1].execute("UPDATE trades set close_price = ? where id = ?" , (closeprice , trade_id))
 
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
     await interaction.response.send_message(f"`{trade_id}` has been created" , ephemeral=True)
 
 
 
 @client.tree.command(name= "utr" , description="update trade command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     status=[
@@ -274,7 +191,7 @@ async def trade(interaction:discord.interactions , status:int , stock:str , stri
 async def utrade(interaction:discord.interactions , trade_id :int , closeprice:float =None , status:int = None,openprice:float = None , opendate:str = None):
     timenow =  getTime(timeStamp= True)
     
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
     dbs[1].execute("SELECT id FROM trades WHERE id = ?" , (trade_id,))
     check = dbs[1].fetchone()
     if check == None :
@@ -304,15 +221,15 @@ async def utrade(interaction:discord.interactions , trade_id :int , closeprice:f
         dbs[1].execute("UPDATE trades set open_date = ? where id = ?" , (opentime,trade_id))
 
 
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
     await interaction.response.send_message(f"`{trade_id}` has been updated" , ephemeral=True)
 
 
 @client.tree.command(name= "dtr" , description="delete trade command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def dtrade(interaction:discord.interactions , trade_id :int ):
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
     dbs[1].execute("SELECT id FROM trades WHERE id = ?" , (trade_id,))
     check = dbs[1].fetchone()
     if check == None :
@@ -321,109 +238,11 @@ async def dtrade(interaction:discord.interactions , trade_id :int ):
     else:
         dbs[1].execute("DELETE FROM trades where id = ?" , (trade_id,))
         await interaction.response.send_message(f"`{trade_id}` has been deleted {interaction.user.mention}" , ephemeral=True)
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
-
-
-def getTodayTrades():
-    dbs = cddb(fun="co")
-    daystart = utils.getTime().replace(hour= 0 , minute= 0 , second= 0 , microsecond= 0)
-
-    dbs[1].execute("SELECT * FROM trades where open_date >= ? ORDER BY open_date" , (daystart.timestamp() , ))  
-    trades = dbs[1].fetchall()      
-    title = f"Trades Summary {daystart.strftime('%m/%d')}"
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-    return trades , title
-
-def getThisMonthTrades(justTime = False):
-    dbs = cddb(fun="co")
-    last_1_month = utils.getTime().replace(day=1,hour=0 , minute= 0 , second= 0 , microsecond= 0)
-    dbs[1].execute("SELECT * FROM trades where open_date >= ? ORDER BY open_date" , (last_1_month.timestamp() , ))  
-    trades = dbs[1].fetchall()
-    if last_1_month.month == 12:
-        next_month = last_1_month.replace(month=1 , year=last_1_month.year +1).strftime('%m/%d/%y')
-    else :
-        next_month =  last_1_month.replace(month=last_1_month.month + 1)
-    title = f"Trades Summary (From {last_1_month.strftime('%m/%d')} to {next_month})"
-
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-    if justTime == True :
-        return last_1_month , title
-    
-    return trades , title
-
-def getThisWeekTrades(justTime = False):
-    dbs = cddb(fun="co")
-    now = utils.getTime().replace(hour=0 , minute= 0 , second= 0 , microsecond= 0)
-    days_until_last_monday = now.weekday() 
-    last_monday = now - timedelta(days=days_until_last_monday)
-    lastweek  = last_monday.timestamp()
-    title = f"Trades Summary (From {last_monday.strftime('%m/%d')} to {(last_monday + timedelta(days=7)).strftime('%m/%d')})"      
-
-    if justTime == True :
-        cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-        return last_monday ,title
-
-    dbs[1].execute("SELECT * FROM trades where open_date >= ? ORDER BY open_date" , (lastweek , ))  
-    trades = dbs[1].fetchall()  
-
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-    return trades , title
-
-def getCustomTimeTrades(start , end):
-    dbs = cddb(fun="co")
-    now = utils.getTime()
-
-    start_date_object = utils.getTime(strTime=start)
-    # if start_date_object.timestamp() > now.timestamp() :
-    #     start_date_object = start_date_object.replace(year=now.year -1)
-
-
-    end_date_object = utils.getTime(strTime=end)
-
-    # if end_date_object.timestamp() > now.timestamp() :
-    #     end_date_object = end_date_object.replace(year=now.year -1)
-
-    # dbs[1].execute("SELECT * FROM trades where ? =< open_date and open_date =< ? ORDER BY open_date" , (start_date_object.timestamp() ,end_date_object.timestamp() ))  
-    dbs[1].execute(
-    "SELECT * FROM trades WHERE open_date >= ? AND open_date <= ? ORDER BY open_date",
-    (start_date_object.timestamp(), end_date_object.timestamp())
-)
-    trades = dbs[1].fetchall()  
-    title = f"Trades Summary (From {start_date_object.strftime('%m/%d')} to {end_date_object.strftime('%m/%d')})"    
-    
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-    return trades , title
-
-
-def getDayStats(day , style = 0):
-    dbs = cddb(fun="co")
-    now = utils.getTime()
-    start_date_object = utils.getTime(strTime=day)
-    # if start_date_object.timestamp() > now.timestamp() :
-    #     start_date_object = start_date_object.replace(year=now.year -1)
-    end_date_object = start_date_object + timedelta(days=1) 
-    dbs[1].execute("SELECT open_price,close_price FROM trades where ? <= open_date and open_date < ? ORDER BY open_date" , (start_date_object.timestamp(),end_date_object.timestamp())  )
-    
-    trades = dbs[1].fetchall() 
-    if trades != [] :
-        stats = 0
-        for trade in trades :
-            if trade[1] != 0 :
-                per = (trade[1] - trade[0]) * 100 
-                stats += per
-            else:
-                pass
-        stats = float(f"{stats:.1f}")    
-    else:
-        stats = 0
-    
-
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
-    return (start_date_object.strftime("%A") if style == 0 else start_date_object.strftime("%m/%d") ,stats)
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
 
 
 @client.tree.command(name= "trades" , description="trades command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     howmany=[
@@ -442,7 +261,7 @@ def getDayStats(day , style = 0):
     
     )
 async def trades(interaction:discord.interactions , howmany:int ,  publish:int = None , start:str = None, end:str = None):
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
     # timenow =  int(datetime.datetime.now(pytz.timezone('GMT-8')).timestamp())
 
     if howmany == 1 :
@@ -450,21 +269,21 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
         trades = dbs[1].fetchall()
         title = "Trades Summary (ALL)"
     if howmany == 2 :
-        data = getThisMonthTrades()
+        data = db_utils.getThisMonthTrades()
         trades = data[0]
         title = data[1]
     elif howmany == 3 :
-        data = getThisWeekTrades()
+        data = db_utils.getThisWeekTrades()
         trades = data[0]
         title = data[1]
 
     elif howmany == 4 :
-        data = getTodayTrades()
+        data = db_utils.getTodayTrades()
         trades = data[0]
         title = data[1]
     elif howmany == 5 :
-        if start != None and end != None :
-           data = getCustomTimeTrades(start , end)
+        if start is not None and end is not None:
+           data = db_utils.getCustomTimeTrades(start , end)
            trades = data[0]
            title = data[1]
         else:
@@ -588,12 +407,12 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
         await interaction.response.send_message(".",embeds = embedds[:10] )
     else:
         await interaction.response.send_message(f"{interaction.user.mention}")
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
 
 
 
 @client.tree.command(name= "gragh_trades" , description="graghTrades command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     span=[
@@ -615,7 +434,7 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
 async def graghTrades(interaction:discord.interactions ,span:int , publish:int =2 ,start:str = None , end:str = None):
     main = []
     if span == 2 :
-        data = getThisMonthTrades(justTime=True)
+        data = db_utils.getThisMonthTrades(justTime=True)
         lastMonth = data[0] 
         title = data[1]
         now = utils.getTime().replace(hour=0 , minute=0 , second= 0 , microsecond= 0 )
@@ -637,11 +456,11 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
                 dayy += 7 
                 week += 1
                 weeks.append([f"{index} to {index}" , 0])
-            weeks[week-1][1] =  float(f"{getDayStats(day)[1] + weeks[week-1][1]:.1f}")
+            weeks[week-1][1] =  float(f"{db_utils.getDayStats(day)[1] + weeks[week-1][1]:.1f}")
             weeks[week-1][0] = f"{dayy} to {index + 1}"
         main = weeks
     elif span == 3 :
-        data = getThisWeekTrades(justTime=True)
+        data = db_utils.getThisWeekTrades(justTime=True)
         lastMonday = data[0]
         title = data[1]
         now = utils.getTime().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -656,11 +475,11 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
                 break
 
         for day in days:
-            main.append(getDayStats(day))
+            main.append(db_utils.getDayStats(day))
 
 
     elif span == 4 :
-        data = getTodayTrades()
+        data = db_utils.getTodayTrades()
         trades = data[0]
         title = data[1]
         if trades != []:
@@ -693,7 +512,7 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
                     break
             for day in days :
                
-               data = getDayStats(day , style=1)
+               data = db_utils.getDayStats(day , style=1)
                if data[1] != 0 :
 
                 main.append([data[0],data[1]])
@@ -735,7 +554,7 @@ async def graghTrades(interaction:discord.interactions ,span:int , publish:int =
 
 
 @client.tree.command(name= "trim" , description="Trim command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -753,7 +572,7 @@ async def trim(interaction:discord.interactions ,stock :str , percentage:int  , 
 
 
 @client.tree.command(name= "average" , description="Average command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -772,7 +591,7 @@ async def avg(interaction:discord.interactions  ,stock :str , contract:str  ,pub
 
 
 @client.tree.command(name= "lotto" , description="Lotto command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -847,7 +666,7 @@ class SwitchMessages(View):
 
 
 @client.tree.command(name= "stats" , description="stats command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     howmany=[
@@ -863,7 +682,7 @@ class SwitchMessages(View):
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def stats(interaction:discord.interactions , howmany:int , start:str = None , end:str = None , publish:str = None ):
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
     # timenow =  int(datetime.datetime.now(pytz.timezone('GMT-8')).timestamp())
 
     if howmany == 1 :
@@ -871,21 +690,21 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
         trades = dbs[1].fetchall()
         title = "Trades Summary (ALL)"
     if howmany == 2 :
-        data = getThisMonthTrades()
+        data = db_utils.getThisMonthTrades()
         trades = data[0]
         title = data[1]
     elif howmany == 3 :
-        data = getThisWeekTrades()
+        data = db_utils.getThisWeekTrades()
         trades = data[0]
         title = data[1]
 
     elif howmany == 4 :
-        data = getTodayTrades()
+        data = db_utils.getTodayTrades()
         trades = data[0]
         title = data[1]
     elif howmany == 5 :
-        if start != None and end != None :
-           data = getCustomTimeTrades(start , end)
+        if start is not None and end is not None:
+           data = db_utils.getCustomTimeTrades(start , end)
            trades = data[0]
            title = data[1]
         else:
@@ -956,7 +775,7 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
             await publishMsg(publish , content=statsM , promo=True)
             await publishMsg(publish , content=messages[0] , view = SwitchMessages(messages) , promo=True)
 
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
 
 
 
@@ -995,7 +814,7 @@ async def get_bto_image(stock:str , text1:str , text2:str , publish:str = None):
 
 
 @client.tree.command(name= "bto" , description="bto command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1042,7 +861,7 @@ async def get_profit_image(text , percentage ,publish):
 
 
 @client.tree.command(name= "profit" , description="profit command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1067,7 +886,7 @@ async def profit(interaction:discord.interactions , text:str , percentage:int ,p
 
 
 @client.tree.command(name= "gamble" , description="gamble command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1119,17 +938,20 @@ async def publishMsg(channel_ , content = "" , embed = None , view = None , file
         if not embeds :
             if embed :
                 embeds = [embed]
-        dbs = cddb(fun="co")
+        dbs = db_utils.cddb(fun="co")
         if promo :
             dbs[1].execute("SELECT id ,config FROM promo_servers where config != '{}' ")
         else:
             dbs[1].execute("SELECT id ,config FROM servers where config != '{}' ")
 
         
-
+        def get_from_json():
+            with open("config.json" , "r") as config :
+                config = json.load(config)
+            return config
 
         servers_config = dbs[1].fetchall()
-        cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
+        db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
         log = {}
         for server in servers_config :
             try:
@@ -1181,7 +1003,7 @@ async def publishMsg(channel_ , content = "" , embed = None , view = None , file
 
 
 @client.tree.command(name= "upd" , description="upd command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1217,7 +1039,7 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
 
 
 @client.tree.command(name= "stc" , description="STC command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1237,7 +1059,7 @@ async def stc(interaction:discord.interactions , text:str , img:str = None , pub
 
 
 @client.tree.command(name= "idi" , description="IDI command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1287,7 +1109,7 @@ async def promo_command(text , img , publish , link = "https://discord.gg/m9WAsJ
     return embedd
 
 @client.tree.command(name= "promo" , description="promo command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1305,7 +1127,7 @@ async def promo(interaction:discord.interactions , text:str ,title:str = "SMALL 
 
 
 @client.tree.command(name= "bto2" , description="BTO2 command")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     publish=[
@@ -1498,7 +1320,7 @@ async def ConvertTextFromAi(text , prompet , inputtext):
 
 
 @client.tree.command(name = "updateprompet")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def updatePrompet(interaction:discord.Integration  , newprompet:str):
     Prompet = getFromJson("prompet")
@@ -1507,7 +1329,7 @@ async def updatePrompet(interaction:discord.Integration  , newprompet:str):
     await interaction.response.send_message("✔")
 
 @client.tree.command(name = "getprompet")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def getPrompet(interaction:discord.Integration):
     Prompet = getFromJson("prompet")
@@ -1517,7 +1339,7 @@ async def getPrompet(interaction:discord.Integration):
 
 
 @client.tree.command(name = "updatepromo_prompt")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def updatepromo_prompt(interaction:discord.Integration  , newprompet:str):
     Prompet = getFromJson("prompet")
@@ -1526,12 +1348,18 @@ async def updatepromo_prompt(interaction:discord.Integration  , newprompet:str):
     await interaction.response.send_message("✔")
 
 @client.tree.command(name = "getpromo_prompt")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def getpromo_prompt(interaction:discord.Integration):
     Prompet = getFromJson("prompet")
     await interaction.response.send_message(f"{Prompet[str(2)]}")
 
+
+def get_from_json():
+    with open("config.json" , "r") as config :
+        config = json.load(config)
+
+    return config
 
 
 
@@ -1822,7 +1650,7 @@ async def CheckFreeTrialView():
 
 # ================================ 
 @client.tree.command(name = "opentrade")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     status=[
@@ -1852,8 +1680,8 @@ async def OpenTrade(interaction:discord.interactions , status:int , stock:str , 
              date_object = date_object.replace(year=utils.getTime().year - 1)
              opentime = (date_object.timestamp())
 
-    # trade_id = utils.encode(cddb, table="trades" , num=4)
-    dbs = cddb(fun="co")
+    # trade_id = utils.encode(db_utils.cddb, table="trades" , num=4)
+    dbs = db_utils.cddb(fun="co")
     if status == 1 :
         opendate = opentime
         closedate = 0
@@ -1867,14 +1695,14 @@ async def OpenTrade(interaction:discord.interactions , status:int , stock:str , 
     if closeprice != None :
         dbs[1].execute("UPDATE trades set close_price = ? where id = ?" , (closeprice , trade_id))
 
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
     embedd = await get_bto_image(stock , str(float(strike)) + str(direetion).replace("1","C").replace("2","P") + " " + str(expiry) , str(openprice)+"$" , publish)
     await interaction.followup.send(f"Trade `{trade_id}` has been created" , embed=embedd)
 
 
 
 @client.tree.command(name = "updatetrade")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 @app_commands.choices(
     status=[
@@ -1892,7 +1720,7 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
     await interaction.response.defer(ephemeral=True)
     timenow =  utils.getTime(timeStamp= True)
     
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
     trade_id = int(trade_id)
     dbs[1].execute("SELECT * FROM trades WHERE id = ?" , (trade_id,))
     check = dbs[1].fetchone()
@@ -1923,7 +1751,7 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
         dbs[1].execute("UPDATE trades set open_date = ? where id = ?" , (opentime,trade_id))
 
 
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
     if closeprice != None :
         text1 = f"{check[2]} {str(int(check[3]))}{str(check[4]).replace('1','C').replace('2','P')} -> {str(closeprice)}"
         embedd = await get_profit_image(text1 , str(int(((closeprice - check[5])/check[5]) * 100)) , publish)
@@ -1931,11 +1759,11 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
 
 @UpdateTrade.autocomplete('trade_id')
 async def UpdateTradeCompleteClient(interaction: discord.Interaction , current: str = "") :
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
 
     dbs[1].execute("SELECT * FROM trades order by id desc limit 50")
     check = dbs[1].fetchall()
-    cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
+    db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
     list = []
     if check :
         for check in check:
@@ -1952,7 +1780,7 @@ async def UpdateTradeCompleteClient(interaction: discord.Interaction , current: 
 
 
 # @client.tree.command(name = "closetrade")
-# @app_commands.check(is_admin)
+# @app_commands.check(db_utils.is_admin)
 # @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 # async def CloseTrade(interaction: discord.Interaction):
 #     await interaction.response.defer(ephemeral=True)
@@ -2002,7 +1830,7 @@ async def on_message(message):
 # ===============================================  
 
 @client.tree.command(name="list_servers", description="List all Discord servers the bot is in")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 async def list_servers(interaction: discord.Interaction):
     guilds = client.guilds
     embed = discord.Embed(
@@ -2044,13 +1872,13 @@ class RemoveServerButton(discord.ui.View):
             self.add_item(remove_promo_btn)
 
     async def remove_regular_server(self, button_interaction: discord.Interaction):
-        if not is_admin(button_interaction):
+        if not db_utils.is_admin(button_interaction):
             await button_interaction.response.send_message("You don't have permission to do this!", ephemeral=True)
             return
         
-        dbs = cddb(fun="co")
+        dbs = db_utils.cddb(fun="co")
         dbs[1].execute("DELETE FROM servers WHERE id = ?", (self.server_id,))
-        cddb(fun="cn", db=dbs[0], cr=dbs[1])
+        db_utils.cddb(fun="cn", db=dbs[0], cr=dbs[1])
         
         await button_interaction.response.send_message(f"Regular server configuration for ID {self.server_id} has been removed.", ephemeral=True)
         
@@ -2062,13 +1890,13 @@ class RemoveServerButton(discord.ui.View):
         await button_interaction.message.edit(view=self)
 
     async def remove_promo_server(self, button_interaction: discord.Interaction):
-        if not is_admin(button_interaction):
+        if not db_utils.is_admin(button_interaction):
             await button_interaction.response.send_message("You don't have permission to do this!", ephemeral=True)
             return
         
-        dbs = cddb(fun="co")
+        dbs = db_utils.cddb(fun="co")
         dbs[1].execute("DELETE FROM promo_servers WHERE id = ?", (self.server_id,))
-        cddb(fun="cn", db=dbs[0], cr=dbs[1])
+        db_utils.cddb(fun="cn", db=dbs[0], cr=dbs[1])
         
         await button_interaction.response.send_message(f"Promo server configuration for ID {self.server_id} has been removed.", ephemeral=True)
         
@@ -2080,11 +1908,11 @@ class RemoveServerButton(discord.ui.View):
         await button_interaction.message.edit(view=self)
 
 @client.tree.command(name="view_server_config", description="View configuration for a specific server")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 async def view_server_config(interaction: discord.Interaction, server_id: str):
     try:
         server_id = int(server_id)
-        dbs = cddb(fun="co")
+        dbs = db_utils.cddb(fun="co")
         
         # Get server config
         dbs[1].execute("SELECT config FROM servers WHERE id = ?", (server_id,))
@@ -2151,7 +1979,7 @@ async def view_server_config(interaction: discord.Interaction, server_id: str):
             add_config_fields(config, "Promo ")
 
         
-        cddb(fun="cn", db=dbs[0], cr=dbs[1])
+        db_utils.cddb(fun="cn", db=dbs[0], cr=dbs[1])
         
         # Create and add the view with the remove buttons
         view = RemoveServerButton(server_id, has_regular=bool(server_config), has_promo=bool(promo_config))
@@ -2168,7 +1996,7 @@ async def view_server_config(interaction: discord.Interaction, server_id: str):
 
 @view_server_config.autocomplete('server_id')
 async def view_server_config_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
     choices = []
     
     # Get all server IDs from both tables
@@ -2184,12 +2012,12 @@ async def view_server_config_autocomplete(interaction: discord.Interaction, curr
                 if len(choices) >= 25:  # Discord limits to 25 choices
                     break
     
-    cddb(fun="cn", db=dbs[0], cr=dbs[1])
+    db_utils.cddb(fun="cn", db=dbs[0], cr=dbs[1])
     return choices
 
 
 @client.tree.command(name="list_configured_servers", description="List all servers in the database")
-@app_commands.check(is_admin)
+@app_commands.check(db_utils.is_admin)
 @app_commands.choices(
     server_type=[
         app_commands.Choice(name="All Servers", value="all"),
@@ -2198,7 +2026,7 @@ async def view_server_config_autocomplete(interaction: discord.Interaction, curr
     ]
 )
 async def list_configured_servers(interaction: discord.Interaction, server_type: str = "all"):
-    dbs = cddb(fun="co")
+    dbs = db_utils.cddb(fun="co")
     
     # Get servers based on type
     server_ids = set()
@@ -2243,7 +2071,7 @@ async def list_configured_servers(interaction: discord.Interaction, server_type:
             break
     
     embed.add_field(name="Servers", value=server_list if server_list else "No configured servers found")
-    cddb(fun="cn", db=dbs[0], cr=dbs[1])
+    db_utils.cddb(fun="cn", db=dbs[0], cr=dbs[1])
     
     await interaction.response.send_message(embed=embed)
 
