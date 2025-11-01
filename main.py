@@ -250,7 +250,7 @@ async def dtrade(interaction:discord.interactions , trade_id :int ):
         app_commands.Choice(name="This month", value=2),
         app_commands.Choice(name="This week", value=3),
         app_commands.Choice(name="Today", value=4),               
-        app_commands.Choice(name="Custom Time (reqierd start , end)", value=5),               
+        app_commands.Choice(name="Custom Time (required start , end)", value=5),               
 
         ],
     publish = [
@@ -268,7 +268,7 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
         dbs[1].execute("SELECT * FROM trades ORDER BY open_date")  
         trades = dbs[1].fetchall()
         title = "Trades Summary (ALL)"
-    if howmany == 2 :
+    elif howmany == 2 :
         data = db_utils.getThisMonthTrades()
         trades = data[0]
         title = data[1]
@@ -287,6 +287,7 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
            trades = data[0]
            title = data[1]
         else:
+            db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
             await interaction.response.send_message(f"start , end arg must have value" , ephemeral=True)
             return None
     
@@ -295,17 +296,12 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
         trades_message_1 = ""
         trades_lines = []
         for trade in trades :
-            runners = 0
-            win = 0
-            lose = 0
             if trade[1] == 1 :
                 status = 'Open'
-                runners += 1
             elif trade[1] == 2 :
                 status = 'Close'
             elif trade[1] == 3 :
                 status = 'Updated'
-                runners += 1
 
             if trade[4] == 1 :
                 direetion = "C"
@@ -318,11 +314,10 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
 
             else : 
                 close_price = trade[6]
-                resualt = f'{float(((close_price - trade[5]) /trade[5] ) * 100 ):.2f}'
-                if float(resualt) > 0 :
-                    win += 1
-                elif float(resualt) < 0 :
-                    lose += 1 
+                if trade[5] != 0 :
+                    resualt = f'{float(((close_price - trade[5]) /trade[5] ) * 100 ):.2f}'
+                else:
+                    resualt = '0.00'
             line = f"`{trade[0]}` **{utils.getTime(stampTime= trade[7]).strftime('%m/%d')}** |   {trade[2]}   {trade[3]}   **{direetion}**  **{trade[9]}**  ``From:{trade[5]} To:{close_price}``   {resualt}% **{status}**"
             trades_message_1 = f'{trades_message_1}{line} \n'
             trades_lines.append(line)
@@ -347,50 +342,48 @@ async def trades(interaction:discord.interactions , howmany:int ,  publish:int =
     else:
         sublists = [trades[i:i+10] for i in range(0, len(trades), 10)]
 
-        for trades in sublists :
+        for trade_batch in sublists :
             win = 0
             lose = 0
             runners = 0
             trades_message_2 = f"```ansi\n{color_form.changeColor(f'{title}' , 'white')}\n"
 
             lengh = 2
-            l1 = utils.getBiggerLenght([f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trades])
-            l2 = utils.getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trades])
-            l3 = utils.getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trades])
-            l4 = utils.getBiggerLenght([trade[9] for trade in trades])
-            l5 = utils.getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trades])
-            l6 = utils.getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trades])
-            # l7 = getBiggerLenght([color_form.changeColor('Runners' , 'blue') if trade[1] == 1 or trade[1] == 3 else color_form.changeColor('Closed' , 'green' , 'blue_black') for trade in trades])    
-            l7 = utils.getBiggerLenght([("✅" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "🛑") if trade[1] == 2 else ("🏃" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "⌛") for trade in trades ])
-            for trade in trades :
+            l1 = utils.getBiggerLenght([f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trade_batch])
+            l2 = utils.getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trade_batch])
+            l3 = utils.getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trade_batch])
+            l4 = utils.getBiggerLenght([trade[9] for trade in trade_batch])
+            l5 = utils.getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trade_batch])
+            l6 = utils.getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 and trade[5] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trade_batch])
+            # l7 = getBiggerLenght([color_form.changeColor('Runners' , 'blue') if trade[1] == 1 or trade[1] == 3 else color_form.changeColor('Closed' , 'green' , 'blue_black') for trade in trade_batch])    
+            l7 = utils.getBiggerLenght([("✅" if (trade[5] != 0 and float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0) else "🛑") if trade[1] == 2 else ("🏃" if (trade[5] != 0 and float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0) else "⌛") for trade in trade_batch ])
+            for trade in trade_batch :
 
                 c1 = f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}"
                 c2 = color_form.changeColor(trade[2] , backGround='light_gray' )
                 c3 = f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}"
                 c4 = trade[9]
                 c5 = f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}"
-                if trade[6] != 0 :
+                if trade[6] != 0 and trade[5] != 0 :
                     per = f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}"
                     if float(per) > 0 and trade[1] == 2 :
                         win += 1
                     elif float(per) < 0 and trade[1] == 2  :
                         lose += 1
                 else:
-                    per = 0
+                    per = "0"
                 if trade[1] == 1 or trade[1] == 3 :
                     runners += 1
 
                 c6 = f"{(color_form.changeColor(per + '%' , 'red' , backGround='bwhite') if float(per) < 0 else color_form.changeColor('+' + per + '%' , 'green' , backGround='bwhite') if float(per) > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' ,  backGround='bwhite')}"
                 # c5 = str(trade[1]).replace('1' , color_form.changeColor('Runners' , 'blue')).replace('2' , color_form.changeColor('Closed' , 'green' , 'blue_black')).replace('3' , color_form.changeColor('Runners' , 'blue'))
-                closed_color = 'green' if  (((trade[6] - trade[5]) /trade[5] ) * 100 ) > 0 else 'red'
-                # c7 = color_form.changeColor('Runners' , 'blue') if trade[1] == 1 or trade[1] == 3 else color_form.changeColor('Closed' , closed_color , 'blue_black')
                 c7 = ("✅" if float(per) > 0 else "🛑") if trade[1] == 2 else ("🏃" if float(per) > 0 else "⌛")
                 t = f"{c1}{(lengh+l1-len(c1))*' '}{c2}{(lengh+l2-len(c2))*' '}{c3}{(lengh+l3-len(c3))*' '}{c4}{(lengh+l4-len(c4))*' '}{c5}{(lengh+l5-len(c5))*' '}{c6}{(lengh+l6-len(c6))*' '}{c7}{(lengh+l7-len(c7))*' '}\n"
                 trades_message_2 += t
 
 
 
-            trades_message_2 += f"{color_form.changeColor(f'{str(len(trades))} Trades' , 'gold' , 'bwhite')}  {color_form.changeColor(f'{win} Win' , 'green' , )}  {color_form.changeColor(f'{lose} Loss' , 'red')}  {color_form.changeColor(f'{runners} RUNNER' , 'blue')}\n```"     
+            trades_message_2 += f"{color_form.changeColor(f'{str(len(trade_batch))} Trades' , 'gold' , 'bwhite')}  {color_form.changeColor(f'{win} Win' , 'green' , )}  {color_form.changeColor(f'{lose} Loss' , 'red')}  {color_form.changeColor(f'{runners} RUNNER' , 'blue')}\n```"     
 
             if publish == 1 :
                 await interaction.channel.send(trades_message_2)
@@ -674,7 +667,7 @@ class SwitchMessages(View):
         app_commands.Choice(name="This month", value=2),
         app_commands.Choice(name="This week", value=3),
         app_commands.Choice(name="Today", value=4),               
-        app_commands.Choice(name="Custom Time (reqierd start , end)", value=5),               
+        app_commands.Choice(name="Custom Time (required start , end)", value=5),               
 
         ],    
     publish=[
@@ -689,7 +682,7 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
         dbs[1].execute("SELECT * FROM trades ORDER BY open_date")  
         trades = dbs[1].fetchall()
         title = "Trades Summary (ALL)"
-    if howmany == 2 :
+    elif howmany == 2 :
         data = db_utils.getThisMonthTrades()
         trades = data[0]
         title = data[1]
@@ -708,6 +701,7 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
            trades = data[0]
            title = data[1]
         else:
+            db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
             await interaction.response.send_message(f"start , end arg must have value" , ephemeral=True)
             return None
 
@@ -718,27 +712,27 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
     runners = 0
     tradesNum = 0
     precentage = 0
-    for trades in sublists :
+    for trade_batch in sublists :
 
         trades_message_2 = f"```ansi\n"
 
         lengh = 2
-        l1 = utils.getBiggerLenght([f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trades])
-        l2 = utils.getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trades])
-        l3 = utils.getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trades])
-        l4 = utils.getBiggerLenght([trade[9] for trade in trades])
-        l5 = utils.getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trades])
-        l6 = utils.getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trades])
-        # l7 = getBiggerLenght([color_form.changeColor('Runners' , 'blue') if trade[1] == 1 or trade[1] == 3 else color_form.changeColor('Closed' , 'green' , 'blue_black') for trade in trades])    
-        l7 = utils.getBiggerLenght([("✅" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "🛑") if trade[1] == 2 else ("🏃" if float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0 else "⌛") for trade in trades ])
-        for trade in trades :
+        l1 = utils.getBiggerLenght([f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}" for trade in trade_batch])
+        l2 = utils.getBiggerLenght([color_form.changeColor(trade[2] , backGround='light_gray' ) for trade in trade_batch])
+        l3 = utils.getBiggerLenght([f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}" for trade in trade_batch])
+        l4 = utils.getBiggerLenght([trade[9] for trade in trade_batch])
+        l5 = utils.getBiggerLenght([f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}" for trade in trade_batch])
+        l6 = utils.getBiggerLenght([f"{(color_form.changeColor(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'red' ,  backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') < 0 else color_form.changeColor('+' + f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}' + '%' , 'green' , backGround='bwhite') if float(f'{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}') > 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')) if trade[6] != 0 and trade[5] != 0 else color_form.changeColor(' 0' + '%' , 'dark_gray' , backGround='bwhite')}" for trade in trade_batch])
+        # l7 = getBiggerLenght([color_form.changeColor('Runners' , 'blue') if trade[1] == 1 or trade[1] == 3 else color_form.changeColor('Closed' , 'green' , 'blue_black') for trade in trade_batch])    
+        l7 = utils.getBiggerLenght([("✅" if (trade[5] != 0 and float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0) else "🛑") if trade[1] == 2 else ("🏃" if (trade[5] != 0 and float(f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}") > 0) else "⌛") for trade in trade_batch ])
+        for trade in trade_batch :
             tradesNum += 1
             c1 = f"{utils.getTime(stampTime=trade[7]).strftime('%m/%d')}"
             c2 = color_form.changeColor(trade[2] , backGround='light_gray' )
             c3 = f"{trade[3]}{str(trade[4]).replace('1' , 'C').replace('2' , 'P')}"
             c4 = trade[9]
             c5 = f"{trade[5]}->{trade[6] if trade[6] != 0 else '-'}"
-            if trade[6] != 0 :
+            if trade[6] != 0 and trade[5] != 0 :
                 per = f"{float(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}"
                 if float(per) > 0 and trade[1] == 2 :
                     win += 1
@@ -746,7 +740,7 @@ async def stats(interaction:discord.interactions , howmany:int , start:str = Non
                     lose += 1
                 precentage += float(f"{(((trade[6] - trade[5]) /trade[5] ) * 100 ):.1f}")
             else:
-                per = 0
+                per = "0"
             if trade[1] == 1 or trade[1] == 3 :
                 runners += 1
 
