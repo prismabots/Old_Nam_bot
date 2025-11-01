@@ -565,7 +565,7 @@ async def trim(interaction:discord.interactions ,stock :str , percentage:int  , 
     embedd = discord.Embed(title=f"TRIM /TAKE PROFIT : 💰" , description=f"**TRADE : ** {stock}\n\nProfit percentage : **{percentage}%**\n\n{text}\n[@Prismagroup LLC](https://discord.gg/m9WAsJdFrn) -  [DISCLAIMER](https://prisma.short.gy/disclaimer)" , color=0x3AFF00)
     embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
     
-    await interaction.response.send_message(embed = embedd)
+    await interaction.response.send_message(embed = embedd, ephemeral=True)
     if publish :
         await publishMsg(publish , embed=embedd)    
 
@@ -1011,7 +1011,7 @@ async def publishMsg(channel_ , content = "" , embed = None , view = None , file
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def upd(interaction:discord.interactions , text:str , publish:str = None , img:str = None ,img2:str = None , chatgpt:bool = False):
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=True)
     
     if chatgpt :
         text = await ConvertText(text)
@@ -1032,7 +1032,7 @@ async def upd(interaction:discord.interactions , text:str , publish:str = None ,
     else:
         embedd.set_footer(text="PrismaGroup @ Namrood   -  For education and entertainment purposes only", icon_url="https://cdn.discordapp.com/attachments/1182021829267824791/1296085804484919326/Namrood_avatar.png" )
         embeds.append(embedd)
-    await interaction.followup.send(embeds = embeds)
+    await interaction.followup.send(embeds = embeds, ephemeral=True)
     if publish :
         await publishMsg(publish , embeds=embeds)
 
@@ -1067,7 +1067,7 @@ async def stc(interaction:discord.interactions , text:str , img:str = None , pub
         app_commands.Choice(name="Swing", value="Swing")           
         ],)
 async def idi(interaction:discord.interactions , text:str , img:str = None ,img2:str = None, publish:str = None , chatgpt:bool = False):
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=True)
     
     if chatgpt :
         text = await ConvertText(text)
@@ -1089,7 +1089,7 @@ async def idi(interaction:discord.interactions , text:str , img:str = None ,img2
 
         embeds.append(embedd2)
     
-    await interaction.followup.send(embeds = embeds)
+    await interaction.followup.send(embeds = embeds, ephemeral=True)
     if publish :
         await publishMsg(publish , embeds=embeds)
 
