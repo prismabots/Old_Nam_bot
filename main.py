@@ -1730,7 +1730,8 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
     dbs[1].execute("SELECT * FROM trades WHERE id = ?" , (trade_id,))
     check = dbs[1].fetchone()
     if not check  :
-        await interaction.response.send_message(f"`{trade_id}` this is a wrong id {interaction.user.mention}" , ephemeral=True)
+        db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
+        await interaction.followup.send(f"`{trade_id}` this is a wrong id {interaction.user.mention}" , ephemeral=True)
         return None
     # status = 3
     if status != None :
@@ -1748,7 +1749,10 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
 
     if opendate != None :
         date_object = utils.getTime(strTime=opendate)
-
+        if date_object is None:
+            db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])
+            await interaction.followup.send(f"Invalid date format: {opendate}" , ephemeral=True)
+            return None
         opentime = (date_object.timestamp())
         # if opentime > timenow :
         #      date_object = date_object.replace(year=utils.getTime().year - 1)
@@ -1757,26 +1761,27 @@ async def UpdateTrade(interaction: discord.Interaction ,trade_id :str , closepri
 
 
     db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
-    if closeprice != None :
+    embedd = None
+    if closeprice != None and check[5] != 0 :
         text1 = f"{check[2]} {str(int(check[3]))}{str(check[4]).replace('1','C').replace('2','P')} -> {str(closeprice)}"
         embedd = await get_profit_image(text1 , str(int(((closeprice - check[5])/check[5]) * 100)) , publish)
-    await interaction.followup.send(f"Trade `{trade_id}` has been updated" , embed=embedd or None)
+    await interaction.followup.send(f"Trade `{trade_id}` has been updated" , embed=embedd)
 
 @UpdateTrade.autocomplete('trade_id')
 async def UpdateTradeCompleteClient(interaction: discord.Interaction , current: str = "") :
     dbs = db_utils.cddb(fun="co")
 
     dbs[1].execute("SELECT * FROM trades order by id desc limit 50")
-    check = dbs[1].fetchall()
+    trades_list = dbs[1].fetchall()
     db_utils.cddb(fun="cn" ,db= dbs[0] ,cr= dbs[1])  
-    list = []
-    if check :
-        for check in check:
-            text = f"[{check[0]}] {check[2]} {str(int(check[3]))}{str(check[4]).replace('1','C').replace('2','P')}"
-            if len(list) < 25 :
-                if text not in list and current.lower() in text.lower():
-                    list.append(app_commands.Choice(name=text , value=str(check[0])))
-        return list
+    choices = []
+    if trades_list :
+        for trade in trades_list:
+            text = f"[{trade[0]}] {trade[2]} {str(int(trade[3]))}{str(trade[4]).replace('1','C').replace('2','P')}"
+            if len(choices) < 25 :
+                if text not in choices and current.lower() in text.lower():
+                    choices.append(app_commands.Choice(name=text , value=str(trade[0])))
+        return choices
     else:
         return []
 
